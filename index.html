@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Excel Web Add-in</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" type="text/javascript"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            max-width: 800px; 
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .hidden {
+            display: none;
+        }
+        input, select, button {
+            margin: 10px 0;
+            padding: 8px 12px;
+            width: 200px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #0078d4;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #106ebe;
+        }
+        .success { 
+            color: #107c10; 
+            background: #dff6dd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error { 
+            color: #d13438; 
+            background: #fde7e9;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Form -->
+        <div id="loginForm">
+            <h2>Login</h2>
+            <input type="text" id="username" placeholder="Username" /><br/>
+            <input type="password" id="password" placeholder="Password" /><br/>
+            <button onclick="login()">Sign In</button>
+            <button onclick="resetForm()">Reset</button>
+        </div>
+
+        <!-- Main Form -->
+        <div id="mainForm" class="hidden">
+            <h2>Report Configuration</h2>
+            <select id="reportType" onchange="handleReportTypeChange()">
+                <option value="">Select Report Type</option>
+                <option value="customer">Balances by Customer</option>
+                <option value="period">Balances by Closing Period</option>
+            </select>
+
+            <!-- Customer Balance Form -->
+            <div id="customerBalanceForm" class="hidden">
+                <button onclick="selectCustomerId()">Select Customer ID from Excel</button>
+                <button onclick="selectAccountLevels()">Select Account Levels</button>
+                <button onclick="selectClosingPeriods()">Select Closing Periods</button>
+            </div>
+
+            <!-- Period Balance Form -->
+            <div id="periodBalanceForm" class="hidden">
+                <button onclick="selectClosingPeriod()">Select Closing Period</button>
+                <button onclick="selectAccountLevels()">Select Account Levels</button>
+                <button onclick="selectCustomerIds()">Select Customer IDs</button>
+            </div>
+
+            <button id="submitButton" class="hidden" onclick="submitForm()">Submit</button>
+        </div>
+    </div>
+
+    <script>
+        Office.onReady(function(info) {
+            if (info.host === Office.HostType.Excel) {
+                console.log('Excel Add-in loaded successfully');
+            }
+        });
+
+        function login() {
+            // Implement authentication logic here
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // For POC, simple validation
+            if (username && password) {
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('mainForm').classList.remove('hidden');
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        function handleReportTypeChange() {
+            const reportType = document.getElementById('reportType').value;
+            const customerForm = document.getElementById('customerBalanceForm');
+            const periodForm = document.getElementById('periodBalanceForm');
+            const submitButton = document.getElementById('submitButton');
+
+            customerForm.classList.add('hidden');
+            periodForm.classList.add('hidden');
+            
+            if (reportType === 'customer') {
+                customerForm.classList.remove('hidden');
+                submitButton.classList.remove('hidden');
+            } else if (reportType === 'period') {
+                periodForm.classList.remove('hidden');
+                submitButton.classList.remove('hidden');
+            }
+        }
+
+        let selectedRanges = {
+            customerId: null,
+            accountLevels: null,
+            closingPeriods: null,
+            closingPeriod: null,
+            customerIds: null
+        };
+
+        async function selectCustomerId() {
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load("address");
+                    await context.sync();
+                    selectedRanges.customerId = range.address;
+                    alert('Customer ID range selected: ' + range.address);
+                });
+            } catch (error) {
+                console.error(error);
+                alert('Error selecting Customer ID range');
+            }
+        }
+
+        async function selectAccountLevels() {
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load("address");
+                    await context.sync();
+                    selectedRanges.accountLevels = range.address;
+                    alert('Account Levels range selected: ' + range.address);
+                });
+            } catch (error) {
+                console.error(error);
+                alert('Error selecting Account Levels range');
+            }
+        }
+
+        async function selectClosingPeriods() {
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load("address");
+                    await context.sync();
+                    selectedRanges.closingPeriods = range.address;
+                    alert('Closing Periods range selected: ' + range.address);
+                });
+            } catch (error) {
+                console.error(error);
+                alert('Error selecting Closing Periods range');
+            }
+        }
+
+        async function selectClosingPeriod() {
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load("address");
+                    await context.sync();
+                    selectedRanges.closingPeriod = range.address;
+                    alert('Closing Period range selected: ' + range.address);
+                });
+            } catch (error) {
+                console.error(error);
+                alert('Error selecting Closing Period range');
+            }
+        }
+
+        async function selectCustomerIds() {
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load("address");
+                    await context.sync();
+                    selectedRanges.customerIds = range.address;
+                    alert('Customer IDs range selected: ' + range.address);
+                });
+            } catch (error) {
+                console.error(error);
+                alert('Error selecting Customer IDs range');
+            }
+        }
+
+        async function submitForm() {
+            const reportType = document.getElementById('reportType').value;
+            
+            try {
+                await Excel.run(async (context) => {
+                    // Simulate API call to get balances
+                    const mockData = [
+                        [1000, 2000, 3000],
+                        [4000, 5000, 6000],
+                        [7000, 8000, 9000]
+                    ];
+
+                    // Get the target range for output
+                    let targetRange;
+                    if (reportType === 'customer') {
+                        targetRange = context.workbook.worksheets.getActiveWorksheet()
+                            .getRange(selectedRanges.accountLevels)
+                            .getResizedRange(0, mockData[0].length - 1);
+                    } else {
+                        targetRange = context.workbook.worksheets.getActiveWorksheet()
+                            .getRange(selectedRanges.accountLevels)
+                            .getResizedRange(0, mockData[0].length - 1);
+                    }
+
+                    targetRange.values = mockData;
+                    await context.sync();
+                    alert('Report generated successfully! Check your Excel worksheet.');
+                });
+            } catch (error) {
+                console.error(error);
+                alert('Error generating report: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html> 
