@@ -76,24 +76,29 @@
 
             <!-- Customer Balance Form -->
             <div id="customerBalanceForm" class="hidden">
-                <button onclick="selectCustomerId()">Select Customer ID from Excel</button>
+                <button id="btnSelectCustomerId" onclick="selectCustomerId()" disabled>Select Customer ID from Excel</button>
                 <span id="selectedCustomerIdDisplay" style="margin-left:10px;color:#0078d4;"></span><br/>
-                <button onclick="selectAccountLevels()">Select Account Levels</button>
+                <button id="btnSelectAccountLevels" onclick="selectAccountLevels()" disabled>Select Account Levels</button>
                 <span id="selectedAccountLevelsDisplay" style="margin-left:10px;color:#0078d4;"></span><br/>
-                <button onclick="selectClosingPeriods()">Select Closing Periods</button>
+                <button id="btnSelectClosingPeriods" onclick="selectClosingPeriods()" disabled>Select Closing Periods</button>
                 <span id="selectedClosingPeriodsDisplay" style="margin-left:10px;color:#0078d4;"></span>
             </div>
 
             <!-- Period Balance Form -->
             <div id="periodBalanceForm" class="hidden">
-                <button onclick="selectAccountLevels()">Select Account Levels</button>
+                <button id="btnSelectAccountLevelsPeriod" onclick="selectAccountLevels()" disabled>Select Account Levels</button>
                 <span id="selectedAccountLevelsDisplay" style="margin-left:10px;color:#0078d4;"></span><br/>
-                <button onclick="selectCustomerIds()">Select Customer IDs</button>
+                <button id="btnSelectCustomerIds" onclick="selectCustomerIds()" disabled>Select Customer IDs</button>
                 <span id="selectedCustomerIdsDisplay" style="margin-left:10px;color:#0078d4;"></span>
             </div>
 
-            <button id="submitButton" class="hidden" onclick="submitForm()">Submit</button>
+            <button id="submitButton" class="hidden" onclick="submitForm()" disabled>Submit</button>
         </div>
+    </div>
+
+    <!-- Add Reset Selections Button below the forms -->
+    <div style="margin-top:20px; text-align:center;">
+        <button id="resetSelectionsButton" onclick="resetSelections()">Reset Selections</button>
     </div>
 
     <script>
@@ -129,20 +134,30 @@
             customerForm.classList.add('hidden');
             periodForm.classList.add('hidden');
             submitButton.classList.add('hidden');
+            submitButton.disabled = true;
 
+            // Reset all selection displays and disable all buttons
+            document.getElementById('selectedCustomerIdDisplay').textContent = '';
             document.getElementById('selectedAccountLevelsDisplay').textContent = '';
             document.getElementById('selectedClosingPeriodsDisplay').textContent = '';
             document.getElementById('selectedCustomerIdsDisplay').textContent = '';
+            selectedRanges.customerId = null;
             selectedRanges.accountLevels = null;
             selectedRanges.closingPeriods = null;
             selectedRanges.customerIds = null;
 
+            document.getElementById('btnSelectCustomerId').disabled = true;
+            document.getElementById('btnSelectAccountLevels').disabled = true;
+            document.getElementById('btnSelectClosingPeriods').disabled = true;
+            document.getElementById('btnSelectAccountLevelsPeriod').disabled = true;
+            document.getElementById('btnSelectCustomerIds').disabled = true;
+
             if (reportType === 'customer') {
                 customerForm.classList.remove('hidden');
-                submitButton.classList.remove('hidden');
+                document.getElementById('btnSelectCustomerId').disabled = false;
             } else if (reportType === 'period') {
                 periodForm.classList.remove('hidden');
-                submitButton.classList.remove('hidden');
+                document.getElementById('btnSelectAccountLevelsPeriod').disabled = false;
             }
         }
 
@@ -172,6 +187,8 @@
                     document.getElementById('selectedCustomerIdDisplay').textContent =
                         'Selected: ' + value + ' (Cell: ' + range.address + ')';
                     alert('Customer ID selected: ' + value + ' (Cell: ' + range.address + ')');
+                    document.getElementById('btnSelectAccountLevels').disabled = false;
+                    checkSubmitEnabled();
                 });
             } catch (error) {
                 console.error(error);
@@ -193,6 +210,12 @@
                     document.getElementById('selectedAccountLevelsDisplay').textContent =
                         'Selected: ' + values.join(', ') + ' (Range: ' + range.address + ')';
                     alert('Account Levels selected: ' + values.join(', ') + ' (Range: ' + range.address + ')');
+                    const reportType = document.getElementById('reportType').value;
+                    if (reportType === 'customer') {
+                        document.getElementById('btnSelectClosingPeriods').disabled = false;
+                    } else if (reportType === 'period') {
+                        document.getElementById('btnSelectCustomerIds').disabled = false;
+                    }
                     checkSubmitEnabled();
                 });
             } catch (error) {
@@ -345,13 +368,49 @@
             const reportType = document.getElementById('reportType').value;
             const submitButton = document.getElementById('submitButton');
             if (reportType === 'customer') {
-                if (selectedRanges.accountLevels && selectedRanges.closingPeriods) {
+                if (selectedRanges.customerId && selectedRanges.accountLevels && selectedRanges.closingPeriods) {
                     submitButton.classList.remove('hidden');
+                    submitButton.disabled = false;
+                } else {
+                    submitButton.classList.add('hidden');
+                    submitButton.disabled = true;
                 }
             } else if (reportType === 'period') {
                 if (selectedRanges.accountLevels && selectedRanges.customerIds) {
                     submitButton.classList.remove('hidden');
+                    submitButton.disabled = false;
+                } else {
+                    submitButton.classList.add('hidden');
+                    submitButton.disabled = true;
                 }
+            }
+        }
+
+        function resetSelections() {
+            // Clear all displays
+            document.getElementById('selectedCustomerIdDisplay').textContent = '';
+            document.getElementById('selectedAccountLevelsDisplay').textContent = '';
+            document.getElementById('selectedClosingPeriodsDisplay').textContent = '';
+            document.getElementById('selectedCustomerIdsDisplay').textContent = '';
+            // Clear all selectedRanges
+            selectedRanges.customerId = null;
+            selectedRanges.accountLevels = null;
+            selectedRanges.closingPeriods = null;
+            selectedRanges.customerIds = null;
+            // Disable all selection and submit buttons
+            document.getElementById('btnSelectCustomerId').disabled = true;
+            document.getElementById('btnSelectAccountLevels').disabled = true;
+            document.getElementById('btnSelectClosingPeriods').disabled = true;
+            document.getElementById('btnSelectAccountLevelsPeriod').disabled = true;
+            document.getElementById('btnSelectCustomerIds').disabled = true;
+            document.getElementById('submitButton').classList.add('hidden');
+            document.getElementById('submitButton').disabled = true;
+            // Enable only the first button for the selected report type
+            const reportType = document.getElementById('reportType').value;
+            if (reportType === 'customer') {
+                document.getElementById('btnSelectCustomerId').disabled = false;
+            } else if (reportType === 'period') {
+                document.getElementById('btnSelectAccountLevelsPeriod').disabled = false;
             }
         }
     </script>
