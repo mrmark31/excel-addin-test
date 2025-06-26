@@ -265,15 +265,14 @@
                     showMessage('Account Levels selected.');
                     
                     if (contextType === 'customer') {
-                        document.getElementById('selectedAccountLevelsDisplay_customer').textContent = 'Selected: ' + range.address;
+                        document.getElementById('selectedAccountLevelsDisplay_customer').textContent = 'Selected: ' + values.join(', ');
                         // Advance workflow
                         document.getElementById('btnSelectAccountLevels_customer').disabled = true;
                         document.getElementById('customerStep3').classList.remove('addin-hidden');
                     } else if (contextType === 'period') {
-                        document.getElementById('selectedAccountLevelsDisplay_period').textContent = 'Selected: ' + range.address;
+                        document.getElementById('selectedAccountLevelsDisplay_period').textContent = 'Selected: ' + values.join(', ');
                         // Advance workflow
                         document.getElementById('btnSelectAccountLevels_period').disabled = true;
-                        document.getElementById('periodStep2').classList.remove('addin-hidden');
                         document.getElementById('periodStep3').classList.remove('addin-hidden');
                     }
                     checkSubmitEnabled();
@@ -320,7 +319,7 @@
                     await context.sync();
                     const values = range.values.flat();
                     selectedRanges.closingPeriods = { address: range.address, values: values };
-                    document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = 'Selected: ' + range.address;
+                    document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = 'Selected: ' + values.join(', ');
                     showMessage('Closing Periods selected.');
                     
                     // Advance workflow
@@ -342,12 +341,11 @@
                     await context.sync();
                     const values = range.values.flat();
                     selectedRanges.customerIds = { address: range.address, values: values };
-                    document.getElementById('selectedCustomerIdsDisplay_period').textContent = 'Selected: ' + range.address;
+                    document.getElementById('selectedCustomerIdsDisplay_period').textContent = 'Selected: ' + values.join(', ');
                     showMessage('Customer IDs selected.');
                     
                     // Advance workflow
                     document.getElementById('btnSelectCustomerIds_period').disabled = true;
-                    document.getElementById('periodStep2').classList.add('addin-hidden');
                     checkSubmitEnabled();
                 });
             } catch (error) {
