@@ -93,12 +93,11 @@
             </div>
 
             <button id="submitButton" class="hidden" onclick="submitForm()" disabled>Submit</button>
+            <!-- Reset Selections Button (only visible after login) -->
+            <div style="margin-top:20px; text-align:center;">
+                <button id="resetSelectionsButton" onclick="resetSelections()">Reset Selections</button>
+            </div>
         </div>
-    </div>
-
-    <!-- Add Reset Selections Button below the forms -->
-    <div style="margin-top:20px; text-align:center;">
-        <button id="resetSelectionsButton" onclick="resetSelections()">Reset Selections</button>
     </div>
 
     <script>
@@ -117,6 +116,8 @@
             if (username && password) {
                 document.getElementById('loginForm').classList.add('hidden');
                 document.getElementById('mainForm').classList.remove('hidden');
+                // Reset workflow state on login
+                handleReportTypeChange();
             }
         }
 
