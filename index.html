@@ -132,12 +132,12 @@
             const periodForm = document.getElementById('periodBalanceForm');
             const submitButton = document.getElementById('submitButton');
 
+            // Hide both forms and reset all displays
             customerForm.classList.add('hidden');
             periodForm.classList.add('hidden');
             submitButton.classList.add('hidden');
             submitButton.disabled = true;
 
-            // Reset all selection displays and disable all buttons
             document.getElementById('selectedCustomerIdDisplay_customer').textContent = '';
             document.getElementById('selectedAccountLevelsDisplay_customer').textContent = '';
             document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = '';
@@ -148,12 +148,14 @@
             selectedRanges.closingPeriods = null;
             selectedRanges.customerIds = null;
 
+            // Disable all buttons
             document.getElementById('btnSelectCustomerId').disabled = true;
             document.getElementById('btnSelectAccountLevels_customer').disabled = true;
             document.getElementById('btnSelectClosingPeriods_customer').disabled = true;
             document.getElementById('btnSelectAccountLevels_period').disabled = true;
             document.getElementById('btnSelectCustomerIds_period').disabled = true;
 
+            // Show and enable only the first button for the selected report type
             if (reportType === 'customer') {
                 customerForm.classList.remove('hidden');
                 document.getElementById('btnSelectCustomerId').disabled = false;
@@ -349,7 +351,6 @@
             }
         }
 
-        // Enable submit button only when all required selections are made
         function checkSubmitEnabled() {
             const reportType = document.getElementById('reportType').value;
             const submitButton = document.getElementById('submitButton');
@@ -373,32 +374,8 @@
         }
 
         function resetSelections() {
-            // Clear all displays
-            document.getElementById('selectedCustomerIdDisplay_customer').textContent = '';
-            document.getElementById('selectedAccountLevelsDisplay_customer').textContent = '';
-            document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = '';
-            document.getElementById('selectedAccountLevelsDisplay_period').textContent = '';
-            document.getElementById('selectedCustomerIdsDisplay_period').textContent = '';
-            // Clear all selectedRanges
-            selectedRanges.customerId = null;
-            selectedRanges.accountLevels = null;
-            selectedRanges.closingPeriods = null;
-            selectedRanges.customerIds = null;
-            // Disable all selection and submit buttons
-            document.getElementById('btnSelectCustomerId').disabled = true;
-            document.getElementById('btnSelectAccountLevels_customer').disabled = true;
-            document.getElementById('btnSelectClosingPeriods_customer').disabled = true;
-            document.getElementById('btnSelectAccountLevels_period').disabled = true;
-            document.getElementById('btnSelectCustomerIds_period').disabled = true;
-            document.getElementById('submitButton').classList.add('hidden');
-            document.getElementById('submitButton').disabled = true;
-            // Enable only the first button for the selected report type
-            const reportType = document.getElementById('reportType').value;
-            if (reportType === 'customer') {
-                document.getElementById('btnSelectCustomerId').disabled = false;
-            } else if (reportType === 'period') {
-                document.getElementById('btnSelectAccountLevels_period').disabled = false;
-            }
+            // Reset workflow to initial state for selected report type
+            handleReportTypeChange();
         }
     </script>
 </body>
