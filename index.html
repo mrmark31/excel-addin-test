@@ -77,15 +77,21 @@
             <!-- Customer Balance Form -->
             <div id="customerBalanceForm" class="hidden">
                 <button onclick="selectCustomerId()">Select Customer ID from Excel</button>
+                <span id="selectedCustomerIdDisplay" style="margin-left:10px;color:#0078d4;"></span><br/>
                 <button onclick="selectAccountLevels()">Select Account Levels</button>
+                <span id="selectedAccountLevelsDisplay" style="margin-left:10px;color:#0078d4;"></span><br/>
                 <button onclick="selectClosingPeriods()">Select Closing Periods</button>
+                <span id="selectedClosingPeriodsDisplay" style="margin-left:10px;color:#0078d4;"></span>
             </div>
 
             <!-- Period Balance Form -->
             <div id="periodBalanceForm" class="hidden">
                 <button onclick="selectClosingPeriod()">Select Closing Period</button>
+                <span id="selectedClosingPeriodDisplay" style="margin-left:10px;color:#0078d4;"></span><br/>
                 <button onclick="selectAccountLevels()">Select Account Levels</button>
+                <span id="selectedAccountLevelsDisplay" style="margin-left:10px;color:#0078d4;"></span><br/>
                 <button onclick="selectCustomerIds()">Select Customer IDs</button>
+                <span id="selectedCustomerIdsDisplay" style="margin-left:10px;color:#0078d4;"></span>
             </div>
 
             <button id="submitButton" class="hidden" onclick="submitForm()">Submit</button>
@@ -146,14 +152,24 @@
             try {
                 await Excel.run(async (context) => {
                     const range = context.workbook.getSelectedRange();
-                    range.load("address");
+                    range.load(["address", "values"]);
                     await context.sync();
-                    selectedRanges.customerId = range.address;
-                    alert('Customer ID range selected: ' + range.address);
+                    if (range.values.length !== 1 || range.values[0].length !== 1) {
+                        alert('Please select a single cell for Customer ID.');
+                        return;
+                    }
+                    const value = range.values[0][0];
+                    selectedRanges.customerId = {
+                        address: range.address,
+                        value: value
+                    };
+                    document.getElementById('selectedCustomerIdDisplay').textContent =
+                        'Selected: ' + value + ' (Cell: ' + range.address + ')';
+                    alert('Customer ID selected: ' + value + ' (Cell: ' + range.address + ')');
                 });
             } catch (error) {
                 console.error(error);
-                alert('Error selecting Customer ID range');
+                alert('Error selecting Customer ID cell');
             }
         }
 
@@ -161,10 +177,17 @@
             try {
                 await Excel.run(async (context) => {
                     const range = context.workbook.getSelectedRange();
-                    range.load("address");
+                    range.load(["address", "values"]);
                     await context.sync();
-                    selectedRanges.accountLevels = range.address;
-                    alert('Account Levels range selected: ' + range.address);
+                    // Flatten values array
+                    const values = range.values.flat();
+                    selectedRanges.accountLevels = {
+                        address: range.address,
+                        values: values
+                    };
+                    document.getElementById('selectedAccountLevelsDisplay').textContent =
+                        'Selected: ' + values.join(', ') + ' (Range: ' + range.address + ')';
+                    alert('Account Levels selected: ' + values.join(', ') + ' (Range: ' + range.address + ')');
                 });
             } catch (error) {
                 console.error(error);
@@ -176,10 +199,16 @@
             try {
                 await Excel.run(async (context) => {
                     const range = context.workbook.getSelectedRange();
-                    range.load("address");
+                    range.load(["address", "values"]);
                     await context.sync();
-                    selectedRanges.closingPeriods = range.address;
-                    alert('Closing Periods range selected: ' + range.address);
+                    const values = range.values.flat();
+                    selectedRanges.closingPeriods = {
+                        address: range.address,
+                        values: values
+                    };
+                    document.getElementById('selectedClosingPeriodsDisplay').textContent =
+                        'Selected: ' + values.join(', ') + ' (Range: ' + range.address + ')';
+                    alert('Closing Periods selected: ' + values.join(', ') + ' (Range: ' + range.address + ')');
                 });
             } catch (error) {
                 console.error(error);
@@ -191,14 +220,24 @@
             try {
                 await Excel.run(async (context) => {
                     const range = context.workbook.getSelectedRange();
-                    range.load("address");
+                    range.load(["address", "values"]);
                     await context.sync();
-                    selectedRanges.closingPeriod = range.address;
-                    alert('Closing Period range selected: ' + range.address);
+                    if (range.values.length !== 1 || range.values[0].length !== 1) {
+                        alert('Please select a single cell for Closing Period.');
+                        return;
+                    }
+                    const value = range.values[0][0];
+                    selectedRanges.closingPeriod = {
+                        address: range.address,
+                        value: value
+                    };
+                    document.getElementById('selectedClosingPeriodDisplay').textContent =
+                        'Selected: ' + value + ' (Cell: ' + range.address + ')';
+                    alert('Closing Period selected: ' + value + ' (Cell: ' + range.address + ')');
                 });
             } catch (error) {
                 console.error(error);
-                alert('Error selecting Closing Period range');
+                alert('Error selecting Closing Period cell');
             }
         }
 
@@ -206,10 +245,16 @@
             try {
                 await Excel.run(async (context) => {
                     const range = context.workbook.getSelectedRange();
-                    range.load("address");
+                    range.load(["address", "values"]);
                     await context.sync();
-                    selectedRanges.customerIds = range.address;
-                    alert('Customer IDs range selected: ' + range.address);
+                    const values = range.values.flat();
+                    selectedRanges.customerIds = {
+                        address: range.address,
+                        values: values
+                    };
+                    document.getElementById('selectedCustomerIdsDisplay').textContent =
+                        'Selected: ' + values.join(', ') + ' (Range: ' + range.address + ')';
+                    alert('Customer IDs selected: ' + values.join(', ') + ' (Range: ' + range.address + ')');
                 });
             } catch (error) {
                 console.error(error);
