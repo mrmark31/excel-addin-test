@@ -267,53 +267,60 @@
             try {
                 await Excel.run(async (context) => {
                     const sheet = context.workbook.worksheets.getActiveWorksheet();
+                    let range1, range2, values1, values2, range1Obj, range2Obj;
                     if (reportType === 'customer') {
-                        // Account Levels: columns, Closing Periods: rows
-                        const accountLevels = selectedRanges.accountLevels ? selectedRanges.accountLevels.values : [];
-                        const closingPeriods = selectedRanges.closingPeriods ? selectedRanges.closingPeriods.values : [];
-                        if (accountLevels.length === 0 || closingPeriods.length === 0) {
-                            alert('Please select Account Levels and Closing Periods.');
-                            return;
-                        }
-                        // Get anchor cells
-                        const accountLevelsRange = sheet.getRange(selectedRanges.accountLevels.address);
-                        const closingPeriodsRange = sheet.getRange(selectedRanges.closingPeriods.address);
-                        accountLevelsRange.load(["rowIndex", "columnIndex", "columnCount"]);
-                        closingPeriodsRange.load(["rowIndex", "columnIndex", "rowCount"]);
-                        await context.sync();
-                        // Write balances in the intersection grid
-                        for (let r = 0; r < closingPeriods.length; r++) {
-                            for (let c = 0; c < accountLevels.length; c++) {
-                                const row = closingPeriodsRange.rowIndex + r;
-                                const col = accountLevelsRange.columnIndex + c;
-                                const cell = sheet.getCell(row, col);
-                                const balance = Math.floor(Math.random() * 10000);
-                                cell.values = [[balance]];
-                            }
-                        }
+                        // Use Account Levels and Closing Periods
+                        range1Obj = sheet.getRange(selectedRanges.accountLevels.address);
+                        range2Obj = sheet.getRange(selectedRanges.closingPeriods.address);
+                        values1 = selectedRanges.accountLevels.values;
+                        values2 = selectedRanges.closingPeriods.values;
                     } else if (reportType === 'period') {
-                        // Account Levels: columns, Customer IDs: rows
-                        const accountLevels = selectedRanges.accountLevels ? selectedRanges.accountLevels.values : [];
-                        const customerIds = selectedRanges.customerIds ? selectedRanges.customerIds.values : [];
-                        if (accountLevels.length === 0 || customerIds.length === 0) {
-                            alert('Please select Account Levels and Customer IDs.');
-                            return;
-                        }
-                        // Get anchor cells
-                        const accountLevelsRange = sheet.getRange(selectedRanges.accountLevels.address);
-                        const customerIdsRange = sheet.getRange(selectedRanges.customerIds.address);
-                        accountLevelsRange.load(["rowIndex", "columnIndex", "columnCount"]);
-                        customerIdsRange.load(["rowIndex", "columnIndex", "rowCount"]);
-                        await context.sync();
-                        // Write balances in the intersection grid
-                        for (let r = 0; r < customerIds.length; r++) {
-                            for (let c = 0; c < accountLevels.length; c++) {
-                                const row = customerIdsRange.rowIndex + r;
-                                const col = accountLevelsRange.columnIndex + c;
-                                const cell = sheet.getCell(row, col);
-                                const balance = Math.floor(Math.random() * 10000);
-                                cell.values = [[balance]];
-                            }
+                        // Use Account Levels and Customer IDs
+                        range1Obj = sheet.getRange(selectedRanges.accountLevels.address);
+                        range2Obj = sheet.getRange(selectedRanges.customerIds.address);
+                        values1 = selectedRanges.accountLevels.values;
+                        values2 = selectedRanges.customerIds.values;
+                    } else {
+                        alert('Please select a report type.');
+                        return;
+                    }
+                    range1Obj.load(["rowIndex", "columnIndex", "rowCount", "columnCount"]);
+                    range2Obj.load(["rowIndex", "columnIndex", "rowCount", "columnCount"]);
+                    await context.sync();
+                    // Determine which is horizontal (columns) and which is vertical (rows)
+                    let colRange, rowRange, colValues, rowValues;
+                    if (range1Obj.rowCount === 1 && range1Obj.columnCount > 1) {
+                        // range1 is horizontal
+                        colRange = range1Obj;
+                        colValues = values1;
+                    } else if (range2Obj.rowCount === 1 && range2Obj.columnCount > 1) {
+                        // range2 is horizontal
+                        colRange = range2Obj;
+                        colValues = values2;
+                    } else {
+                        alert('Please select one horizontal (row) range and one vertical (column) range.');
+                        return;
+                    }
+                    if (range1Obj.columnCount === 1 && range1Obj.rowCount > 1) {
+                        // range1 is vertical
+                        rowRange = range1Obj;
+                        rowValues = values1;
+                    } else if (range2Obj.columnCount === 1 && range2Obj.rowCount > 1) {
+                        // range2 is vertical
+                        rowRange = range2Obj;
+                        rowValues = values2;
+                    } else {
+                        alert('Please select one horizontal (row) range and one vertical (column) range.');
+                        return;
+                    }
+                    // Write balances in the intersection grid
+                    for (let r = 0; r < rowValues.length; r++) {
+                        for (let c = 0; c < colValues.length; c++) {
+                            const row = rowRange.rowIndex + r;
+                            const col = colRange.columnIndex + c;
+                            const cell = sheet.getCell(row, col);
+                            const balance = Math.floor(Math.random() * 10000);
+                            cell.values = [[balance]];
                         }
                     }
                     await context.sync();
