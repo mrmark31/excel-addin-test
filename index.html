@@ -264,29 +264,86 @@
 
         async function submitForm() {
             const reportType = document.getElementById('reportType').value;
-            
             try {
                 await Excel.run(async (context) => {
-                    // Simulate API call to get balances
-                    const mockData = [
-                        [1000, 2000, 3000],
-                        [4000, 5000, 6000],
-                        [7000, 8000, 9000]
-                    ];
-
-                    // Get the target range for output
-                    let targetRange;
+                    const sheet = context.workbook.worksheets.getActiveWorksheet();
                     if (reportType === 'customer') {
-                        targetRange = context.workbook.worksheets.getActiveWorksheet()
-                            .getRange(selectedRanges.accountLevels)
-                            .getResizedRange(0, mockData[0].length - 1);
-                    } else {
-                        targetRange = context.workbook.worksheets.getActiveWorksheet()
-                            .getRange(selectedRanges.accountLevels)
-                            .getResizedRange(0, mockData[0].length - 1);
+                        // Rows: Customer IDs, Columns: Account Levels
+                        const customerIds = selectedRanges.customerId ? [selectedRanges.customerId.value] : [];
+                        const accountLevels = selectedRanges.accountLevels ? selectedRanges.accountLevels.values : [];
+                        const closingPeriods = selectedRanges.closingPeriods ? selectedRanges.closingPeriods.values : [];
+                        if (customerIds.length === 0 || accountLevels.length === 0 || closingPeriods.length === 0) {
+                            alert('Please select Customer ID, Account Levels, and Closing Periods.');
+                            return;
+                        }
+                        // Table: Rows = Customer IDs, Columns = Account Levels, for each Closing Period
+                        let startRow = 0;
+                        let startCol = 0;
+                        // Find a place to write (use Account Levels selection as anchor)
+                        const anchorRange = sheet.getRange(selectedRanges.accountLevels.address);
+                        anchorRange.load(["rowIndex", "columnIndex"]);
+                        await context.sync();
+                        startRow = anchorRange.rowIndex + accountLevels.length + 2; // leave space for headers
+                        startCol = anchorRange.columnIndex;
+                        // Write headers
+                        sheet.getCell(startRow, startCol).values = [["Customer ID"]];
+                        for (let i = 0; i < accountLevels.length; i++) {
+                            sheet.getCell(startRow, startCol + 1 + i).values = [[accountLevels[i]]];
+                        }
+                        // Write data for each customer and closing period
+                        for (let p = 0; p < closingPeriods.length; p++) {
+                            const rowOffset = startRow + 1 + p * customerIds.length;
+                            // Closing period label
+                            sheet.getCell(rowOffset, startCol).values = [["Closing Period: " + closingPeriods[p]]];
+                            for (let c = 0; c < customerIds.length; c++) {
+                                const dataRow = rowOffset + 1 + c;
+                                sheet.getCell(dataRow, startCol).values = [[customerIds[c]]];
+                                for (let a = 0; a < accountLevels.length; a++) {
+                                    // Mock balance value
+                                    const balance = Math.floor(Math.random() * 10000);
+                                    sheet.getCell(dataRow, startCol + 1 + a).values = [[balance]];
+                                }
+                            }
+                        }
+                    } else if (reportType === 'period') {
+                        // Rows: Closing Periods, Columns: Account Levels, for each Customer ID
+                        const closingPeriods = selectedRanges.closingPeriod ? [selectedRanges.closingPeriod.value] : [];
+                        const accountLevels = selectedRanges.accountLevels ? selectedRanges.accountLevels.values : [];
+                        const customerIds = selectedRanges.customerIds ? selectedRanges.customerIds.values : [];
+                        if (closingPeriods.length === 0 || accountLevels.length === 0 || customerIds.length === 0) {
+                            alert('Please select Closing Period, Account Levels, and Customer IDs.');
+                            return;
+                        }
+                        // Table: Rows = Closing Periods, Columns = Account Levels, for each Customer ID
+                        let startRow = 0;
+                        let startCol = 0;
+                        // Use Account Levels selection as anchor
+                        const anchorRange = sheet.getRange(selectedRanges.accountLevels.address);
+                        anchorRange.load(["rowIndex", "columnIndex"]);
+                        await context.sync();
+                        startRow = anchorRange.rowIndex + accountLevels.length + 2;
+                        startCol = anchorRange.columnIndex;
+                        // Write headers
+                        sheet.getCell(startRow, startCol).values = [["Closing Period"]];
+                        for (let i = 0; i < accountLevels.length; i++) {
+                            sheet.getCell(startRow, startCol + 1 + i).values = [[accountLevels[i]]];
+                        }
+                        // Write data for each closing period and customer
+                        for (let c = 0; c < customerIds.length; c++) {
+                            const rowOffset = startRow + 1 + c * closingPeriods.length;
+                            // Customer ID label
+                            sheet.getCell(rowOffset, startCol).values = [["Customer ID: " + customerIds[c]]];
+                            for (let p = 0; p < closingPeriods.length; p++) {
+                                const dataRow = rowOffset + 1 + p;
+                                sheet.getCell(dataRow, startCol).values = [[closingPeriods[p]]];
+                                for (let a = 0; a < accountLevels.length; a++) {
+                                    // Mock balance value
+                                    const balance = Math.floor(Math.random() * 10000);
+                                    sheet.getCell(dataRow, startCol + 1 + a).values = [[balance]];
+                                }
+                            }
+                        }
                     }
-
-                    targetRange.values = mockData;
                     await context.sync();
                     alert('Report generated successfully! Check your Excel worksheet.');
                 });
