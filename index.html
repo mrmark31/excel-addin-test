@@ -311,6 +311,28 @@
             }
         }
 
+        async function selectClosingPeriods() {
+            console.log('selectClosingPeriods() called.');
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load(["address", "values"]);
+                    await context.sync();
+                    const values = range.values.flat();
+                    selectedRanges.closingPeriods = { address: range.address, values: values };
+                    document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = 'Selected: ' + range.address;
+                    showMessage('Closing Periods selected.');
+                    
+                    // Advance workflow
+                    document.getElementById('btnSelectClosingPeriods_customer').disabled = true;
+                    checkSubmitEnabled();
+                });
+            } catch (error) {
+                console.error('Error in selectClosingPeriods:', error);
+                showMessage('Error selecting Closing Periods.', true);
+            }
+        }
+
         async function selectCustomerIds() {
             console.log('selectCustomerIds() called.');
             try {
