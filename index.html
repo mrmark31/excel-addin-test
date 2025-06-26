@@ -56,6 +56,11 @@
 </head>
 <body>
     <div class="container">
+        <!-- Status Message Area -->
+        <div id="status-container" style="margin-top: 15px;">
+            <div id="status-message" style="display: none; padding: 10px; border-radius: 4px;"></div>
+        </div>
+
         <!-- Login Form -->
         <div id="loginForm">
             <h2>Login</h2>
@@ -76,23 +81,37 @@
 
             <!-- Customer Balance Form -->
             <div id="customerBalanceForm" class="addin-hidden">
-                <button id="btnSelectCustomerId" onclick="selectCustomerId()" disabled>Select Customer ID from Excel</button>
-                <span id="selectedCustomerIdDisplay_customer" style="margin-left:10px;color:#0078d4;"></span><br/>
-                <button id="btnSelectAccountLevels_customer" onclick="selectAccountLevels('customer')" disabled>Select Account Levels</button>
-                <span id="selectedAccountLevelsDisplay_customer" style="margin-left:10px;color:#0078d4;"></span><br/>
-                <button id="btnSelectClosingPeriods_customer" onclick="selectClosingPeriods()" disabled>Select Closing Periods</button>
-                <span id="selectedClosingPeriodsDisplay_customer" style="margin-left:10px;color:#0078d4;"></span>
+                <div id="customerStep1" class="step">
+                    <button id="btnSelectCustomerId" onclick="selectCustomerId()">Select Customer ID</button>
+                    <span id="selectedCustomerIdDisplay_customer" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
+                <div id="customerStep2" class="step addin-hidden">
+                    <button id="btnSelectAccountLevels_customer" onclick="selectAccountLevels('customer')">Select Account Levels</button>
+                    <span id="selectedAccountLevelsDisplay_customer" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
+                <div id="customerStep3" class="step addin-hidden">
+                    <button id="btnSelectClosingPeriods_customer" onclick="selectClosingPeriods()">Select Closing Periods</button>
+                    <span id="selectedClosingPeriodsDisplay_customer" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
             </div>
 
             <!-- Period Balance Form -->
             <div id="periodBalanceForm" class="addin-hidden">
-                <button id="btnSelectAccountLevels_period" onclick="selectAccountLevels('period')" disabled>Select Account Levels</button>
-                <span id="selectedAccountLevelsDisplay_period" style="margin-left:10px;color:#0078d4;"></span><br/>
-                <button id="btnSelectCustomerIds_period" onclick="selectCustomerIds()" disabled>Select Customer IDs</button>
-                <span id="selectedCustomerIdsDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
+                <div id="periodStep1" class="step">
+                    <button id="btnSelectClosingPeriod_period" onclick="selectClosingPeriod()">Select Closing Period</button>
+                    <span id="selectedClosingPeriodDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
+                <div id="periodStep2" class="step addin-hidden">
+                    <button id="btnSelectAccountLevels_period" onclick="selectAccountLevels('period')">Select Account Levels</button>
+                    <span id="selectedAccountLevelsDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
+                <div id="periodStep3" class="step addin-hidden">
+                    <button id="btnSelectCustomerIds_period" onclick="selectCustomerIds()">Select Customer IDs</button>
+                    <span id="selectedCustomerIdsDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
             </div>
 
-            <button id="submitButton" class="addin-hidden" onclick="submitForm()" disabled>Submit</button>
+            <button id="submitButton" class="addin-hidden" onclick="submitForm()">Submit</button>
             <!-- Reset Selections Button (only visible after login) -->
             <div style="margin-top:20px; text-align:center;">
                 <button id="resetSelectionsButton" onclick="resetSelections()">Reset Selections</button>
@@ -106,6 +125,24 @@
                 console.log('Add-in ready. Host: Excel.');
             }
         });
+
+        function showMessage(text, isError = false) {
+            const messageDiv = document.getElementById('status-message');
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+            if (isError) {
+                messageDiv.style.backgroundColor = '#fde7e9'; // Light red
+                messageDiv.style.color = '#d13438'; // Dark red
+            } else {
+                messageDiv.style.backgroundColor = '#dff6dd'; // Light green
+                messageDiv.style.color = '#107c10'; // Dark green
+            }
+
+            // Hide the message after 5 seconds
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
 
         function login() {
             console.log('login() called.');
@@ -131,8 +168,6 @@
 
         function handleReportTypeChange() {
             const reportType = document.getElementById('reportType').value;
-            console.log('handleReportTypeChange() called. Report type:', reportType);
-
             const customerForm = document.getElementById('customerBalanceForm');
             const periodForm = document.getElementById('periodBalanceForm');
             
@@ -141,25 +176,31 @@
             customerForm.classList.add('addin-hidden');
             periodForm.classList.add('addin-hidden');
             
-            // Disable all buttons
-            document.getElementById('btnSelectCustomerId').disabled = true;
-            document.getElementById('btnSelectAccountLevels_customer').disabled = true;
-            document.getElementById('btnSelectClosingPeriods_customer').disabled = true;
-            document.getElementById('btnSelectAccountLevels_period').disabled = true;
-            document.getElementById('btnSelectCustomerIds_period').disabled = true;
-            
+            // Hide all steps except the first one in each form
+            document.querySelectorAll('#customerStep2, #customerStep3, #periodStep2, #periodStep3').forEach(el => el.classList.add('addin-hidden'));
+
+            // Re-enable all buttons
+            document.getElementById('btnSelectCustomerId').disabled = false;
+            document.getElementById('btnSelectAccountLevels_customer').disabled = false;
+            document.getElementById('btnSelectClosingPeriods_customer').disabled = false;
+            document.getElementById('btnSelectClosingPeriod_period').disabled = false;
+            document.getElementById('btnSelectAccountLevels_period').disabled = false;
+            document.getElementById('btnSelectCustomerIds_period').disabled = false;
+
             // Clear display texts
             document.getElementById('selectedCustomerIdDisplay_customer').textContent = '';
             document.getElementById('selectedAccountLevelsDisplay_customer').textContent = '';
             document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = '';
             document.getElementById('selectedAccountLevelsDisplay_period').textContent = '';
             document.getElementById('selectedCustomerIdsDisplay_period').textContent = '';
+            document.getElementById('selectedClosingPeriodDisplay_period').textContent = '';
 
             // Clear saved data
             selectedRanges.customerId = null;
             selectedRanges.accountLevels = null;
             selectedRanges.closingPeriods = null;
             selectedRanges.customerIds = null;
+            selectedRanges.closingPeriod = null;
             
             checkSubmitEnabled();
 
@@ -167,11 +208,11 @@
             if (reportType === 'customer') {
                 console.log('Enabling "customer" workflow.');
                 customerForm.classList.remove('addin-hidden');
-                document.getElementById('btnSelectCustomerId').disabled = false;
+                document.getElementById('customerStep1').classList.remove('addin-hidden');
             } else if (reportType === 'period') {
                 console.log('Enabling "period" workflow.');
                 periodForm.classList.remove('addin-hidden');
-                document.getElementById('btnSelectAccountLevels_period').disabled = false;
+                document.getElementById('periodStep1').classList.remove('addin-hidden');
             } else {
                 console.log('No report type selected.');
             }
@@ -193,22 +234,22 @@
                     range.load(["address", "values"]);
                     await context.sync();
                     if (range.values.length !== 1 || range.values[0].length !== 1) {
-                        alert('Please select a single cell for Customer ID.');
+                        showMessage('Please select a single cell for Customer ID.', true);
                         return;
                     }
                     const value = range.values[0][0];
                     selectedRanges.customerId = { address: range.address, value: value };
                     document.getElementById('selectedCustomerIdDisplay_customer').textContent = 'Selected: ' + value;
-                    console.log('Customer ID selected. Advancing workflow.');
+                    showMessage('Customer ID selected.');
                     
                     // Advance workflow
                     document.getElementById('btnSelectCustomerId').disabled = true;
-                    document.getElementById('btnSelectAccountLevels_customer').disabled = false;
+                    document.getElementById('customerStep2').classList.remove('addin-hidden');
                     checkSubmitEnabled();
                 });
             } catch (error) {
                 console.error('Error in selectCustomerId:', error);
-                alert('Error selecting Customer ID cell');
+                showMessage('Error selecting Customer ID.', true);
             }
         }
 
@@ -221,46 +262,52 @@
                     await context.sync();
                     const values = range.values.flat();
                     selectedRanges.accountLevels = { address: range.address, values: values };
-                    console.log('Account Levels selected. Advancing workflow for:', contextType);
+                    showMessage('Account Levels selected.');
                     
                     if (contextType === 'customer') {
                         document.getElementById('selectedAccountLevelsDisplay_customer').textContent = 'Selected: ' + range.address;
                         // Advance workflow
                         document.getElementById('btnSelectAccountLevels_customer').disabled = true;
-                        document.getElementById('btnSelectClosingPeriods_customer').disabled = false;
+                        document.getElementById('customerStep3').classList.remove('addin-hidden');
                     } else if (contextType === 'period') {
                         document.getElementById('selectedAccountLevelsDisplay_period').textContent = 'Selected: ' + range.address;
                         // Advance workflow
                         document.getElementById('btnSelectAccountLevels_period').disabled = true;
-                        document.getElementById('btnSelectCustomerIds_period').disabled = false;
+                        document.getElementById('periodStep2').classList.remove('addin-hidden');
+                        document.getElementById('periodStep3').classList.remove('addin-hidden');
                     }
                     checkSubmitEnabled();
                 });
             } catch (error) {
                 console.error('Error in selectAccountLevels:', error);
-                alert('Error selecting Account Levels range');
+                showMessage('Error selecting Account Levels.', true);
             }
         }
 
-        async function selectClosingPeriods() {
-            console.log('selectClosingPeriods() called.');
+        async function selectClosingPeriod() {
+            console.log('selectClosingPeriod() called.');
             try {
                 await Excel.run(async (context) => {
                     const range = context.workbook.getSelectedRange();
                     range.load(["address", "values"]);
                     await context.sync();
-                    const values = range.values.flat();
-                    selectedRanges.closingPeriods = { address: range.address, values: values };
-                    document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = 'Selected: ' + range.address;
-                    console.log('Closing Periods selected. Advancing workflow.');
+                    if (range.values.length !== 1 || range.values[0].length !== 1) {
+                        showMessage('Please select a single cell for Closing Period.', true);
+                        return;
+                    }
+                    const value = range.values[0][0];
+                    selectedRanges.closingPeriod = { address: range.address, value: value };
+                    document.getElementById('selectedClosingPeriodDisplay_period').textContent = 'Selected: ' + value;
+                    showMessage('Closing Period selected.');
                     
                     // Advance workflow
-                    document.getElementById('btnSelectClosingPeriods_customer').disabled = true;
+                    document.getElementById('btnSelectClosingPeriod_period').disabled = true;
+                    document.getElementById('periodStep2').classList.remove('addin-hidden');
                     checkSubmitEnabled();
                 });
             } catch (error) {
-                console.error('Error in selectClosingPeriods:', error);
-                alert('Error selecting Closing Periods range');
+                console.error('Error in selectClosingPeriod:', error);
+                showMessage('Error selecting Closing Period.', true);
             }
         }
 
@@ -274,15 +321,16 @@
                     const values = range.values.flat();
                     selectedRanges.customerIds = { address: range.address, values: values };
                     document.getElementById('selectedCustomerIdsDisplay_period').textContent = 'Selected: ' + range.address;
-                    console.log('Customer IDs selected. Advancing workflow.');
+                    showMessage('Customer IDs selected.');
                     
                     // Advance workflow
                     document.getElementById('btnSelectCustomerIds_period').disabled = true;
+                    document.getElementById('periodStep2').classList.add('addin-hidden');
                     checkSubmitEnabled();
                 });
             } catch (error) {
                 console.error('Error in selectCustomerIds:', error);
-                alert('Error selecting Customer IDs range');
+                showMessage('Error selecting Customer IDs.', true);
             }
         }
 
@@ -297,7 +345,7 @@
                     isComplete = true;
                 }
             } else if (reportType === 'period') {
-                if (selectedRanges.accountLevels && selectedRanges.customerIds) {
+                if (selectedRanges.closingPeriod && selectedRanges.accountLevels && selectedRanges.customerIds) {
                     isComplete = true;
                 }
             }
@@ -375,11 +423,11 @@
                         }
                     }
                     await context.sync();
-                    alert('Report generated successfully! Check your Excel worksheet.');
+                    showMessage('Report generated successfully!');
                 });
             } catch (error) {
                 console.error(error);
-                alert('Error generating report: ' + error.message);
+                showMessage('Error generating report: ' + error.message, true);
             }
         }
 
