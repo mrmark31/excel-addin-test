@@ -18,7 +18,7 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        .hidden {
+        .addin-hidden {
             display: none;
         }
         input, select, button {
@@ -66,7 +66,7 @@
         </div>
 
         <!-- Main Form -->
-        <div id="mainForm" class="hidden">
+        <div id="mainForm" class="addin-hidden">
             <h2>Report Configuration</h2>
             <select id="reportType" onchange="handleReportTypeChange()">
                 <option value="">Select Report Type</option>
@@ -75,7 +75,7 @@
             </select>
 
             <!-- Customer Balance Form -->
-            <div id="customerBalanceForm" class="hidden">
+            <div id="customerBalanceForm" class="addin-hidden">
                 <button id="btnSelectCustomerId" onclick="selectCustomerId()" disabled>Select Customer ID from Excel</button>
                 <span id="selectedCustomerIdDisplay_customer" style="margin-left:10px;color:#0078d4;"></span><br/>
                 <button id="btnSelectAccountLevels_customer" onclick="selectAccountLevels('customer')" disabled>Select Account Levels</button>
@@ -85,14 +85,14 @@
             </div>
 
             <!-- Period Balance Form -->
-            <div id="periodBalanceForm" class="hidden">
+            <div id="periodBalanceForm" class="addin-hidden">
                 <button id="btnSelectAccountLevels_period" onclick="selectAccountLevels('period')" disabled>Select Account Levels</button>
                 <span id="selectedAccountLevelsDisplay_period" style="margin-left:10px;color:#0078d4;"></span><br/>
                 <button id="btnSelectCustomerIds_period" onclick="selectCustomerIds()" disabled>Select Customer IDs</button>
                 <span id="selectedCustomerIdsDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
             </div>
 
-            <button id="submitButton" class="hidden" onclick="submitForm()" disabled>Submit</button>
+            <button id="submitButton" class="addin-hidden" onclick="submitForm()" disabled>Submit</button>
             <!-- Reset Selections Button (only visible after login) -->
             <div style="margin-top:20px; text-align:center;">
                 <button id="resetSelectionsButton" onclick="resetSelections()">Reset Selections</button>
@@ -103,37 +103,43 @@
     <script>
         Office.onReady(function(info) {
             if (info.host === Office.HostType.Excel) {
-                console.log('Excel Add-in loaded successfully');
+                console.log('Add-in ready. Host: Excel.');
             }
         });
 
         function login() {
+            console.log('login() called.');
             // Implement authentication logic here
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             
             // For POC, simple validation
             if (username && password) {
-                document.getElementById('loginForm').classList.add('hidden');
-                document.getElementById('mainForm').classList.remove('hidden');
+                console.log('Login successful.');
+                document.getElementById('loginForm').classList.add('addin-hidden');
+                document.getElementById('mainForm').classList.remove('addin-hidden');
                 // Reset workflow state on login
                 handleReportTypeChange();
             }
         }
 
         function resetForm() {
+            console.log('resetForm() called.');
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
         }
 
         function handleReportTypeChange() {
             const reportType = document.getElementById('reportType').value;
+            console.log('handleReportTypeChange() called. Report type:', reportType);
+
             const customerForm = document.getElementById('customerBalanceForm');
             const periodForm = document.getElementById('periodBalanceForm');
             
             // Reset everything
-            customerForm.classList.add('hidden');
-            periodForm.classList.add('hidden');
+            console.log('Resetting forms and selections.');
+            customerForm.classList.add('addin-hidden');
+            periodForm.classList.add('addin-hidden');
             
             // Disable all buttons
             document.getElementById('btnSelectCustomerId').disabled = true;
@@ -159,11 +165,15 @@
 
             // Enable the correct workflow
             if (reportType === 'customer') {
-                customerForm.classList.remove('hidden');
+                console.log('Enabling "customer" workflow.');
+                customerForm.classList.remove('addin-hidden');
                 document.getElementById('btnSelectCustomerId').disabled = false;
             } else if (reportType === 'period') {
-                periodForm.classList.remove('hidden');
+                console.log('Enabling "period" workflow.');
+                periodForm.classList.remove('addin-hidden');
                 document.getElementById('btnSelectAccountLevels_period').disabled = false;
+            } else {
+                console.log('No report type selected.');
             }
         }
 
@@ -176,6 +186,7 @@
         };
 
         async function selectCustomerId() {
+            console.log('selectCustomerId() called.');
             try {
                 await Excel.run(async (context) => {
                     const range = context.workbook.getSelectedRange();
@@ -188,6 +199,7 @@
                     const value = range.values[0][0];
                     selectedRanges.customerId = { address: range.address, value: value };
                     document.getElementById('selectedCustomerIdDisplay_customer').textContent = 'Selected: ' + value;
+                    console.log('Customer ID selected. Advancing workflow.');
                     
                     // Advance workflow
                     document.getElementById('btnSelectCustomerId').disabled = true;
@@ -195,12 +207,13 @@
                     checkSubmitEnabled();
                 });
             } catch (error) {
-                console.error(error);
+                console.error('Error in selectCustomerId:', error);
                 alert('Error selecting Customer ID cell');
             }
         }
 
         async function selectAccountLevels(contextType) {
+            console.log('selectAccountLevels() called. Context:', contextType);
             try {
                 await Excel.run(async (context) => {
                     const range = context.workbook.getSelectedRange();
@@ -208,6 +221,7 @@
                     await context.sync();
                     const values = range.values.flat();
                     selectedRanges.accountLevels = { address: range.address, values: values };
+                    console.log('Account Levels selected. Advancing workflow for:', contextType);
                     
                     if (contextType === 'customer') {
                         document.getElementById('selectedAccountLevelsDisplay_customer').textContent = 'Selected: ' + range.address;
@@ -223,12 +237,13 @@
                     checkSubmitEnabled();
                 });
             } catch (error) {
-                console.error(error);
+                console.error('Error in selectAccountLevels:', error);
                 alert('Error selecting Account Levels range');
             }
         }
 
         async function selectClosingPeriods() {
+            console.log('selectClosingPeriods() called.');
             try {
                 await Excel.run(async (context) => {
                     const range = context.workbook.getSelectedRange();
@@ -237,18 +252,20 @@
                     const values = range.values.flat();
                     selectedRanges.closingPeriods = { address: range.address, values: values };
                     document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = 'Selected: ' + range.address;
+                    console.log('Closing Periods selected. Advancing workflow.');
                     
                     // Advance workflow
                     document.getElementById('btnSelectClosingPeriods_customer').disabled = true;
                     checkSubmitEnabled();
                 });
             } catch (error) {
-                console.error(error);
+                console.error('Error in selectClosingPeriods:', error);
                 alert('Error selecting Closing Periods range');
             }
         }
 
         async function selectCustomerIds() {
+            console.log('selectCustomerIds() called.');
             try {
                 await Excel.run(async (context) => {
                     const range = context.workbook.getSelectedRange();
@@ -257,13 +274,14 @@
                     const values = range.values.flat();
                     selectedRanges.customerIds = { address: range.address, values: values };
                     document.getElementById('selectedCustomerIdsDisplay_period').textContent = 'Selected: ' + range.address;
+                    console.log('Customer IDs selected. Advancing workflow.');
                     
                     // Advance workflow
                     document.getElementById('btnSelectCustomerIds_period').disabled = true;
                     checkSubmitEnabled();
                 });
             } catch (error) {
-                console.error(error);
+                console.error('Error in selectCustomerIds:', error);
                 alert('Error selecting Customer IDs range');
             }
         }
@@ -285,10 +303,12 @@
             }
 
             if (isComplete) {
-                submitButton.classList.remove('hidden');
+                console.log('All selections complete. Enabling Submit button.');
+                submitButton.classList.remove('addin-hidden');
                 submitButton.disabled = false;
             } else {
-                submitButton.classList.add('hidden');
+                console.log('Selections not complete. Hiding Submit button.');
+                submitButton.classList.add('addin-hidden');
                 submitButton.disabled = true;
             }
         }
@@ -364,6 +384,7 @@
         }
 
         function resetSelections() {
+            console.log('resetSelections() called.');
             // Reset workflow to initial state for selected report type
             handleReportTypeChange();
         }
