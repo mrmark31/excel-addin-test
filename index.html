@@ -188,7 +188,10 @@
                     document.getElementById('selectedCustomerIdDisplay').textContent =
                         'Selected: ' + value + ' (Cell: ' + range.address + ')';
                     alert('Customer ID selected: ' + value + ' (Cell: ' + range.address + ')');
+                    // Enable only the next button
+                    document.getElementById('btnSelectCustomerId').disabled = true;
                     document.getElementById('btnSelectAccountLevels').disabled = false;
+                    document.getElementById('btnSelectClosingPeriods').disabled = true;
                     checkSubmitEnabled();
                 });
             } catch (error) {
@@ -213,8 +216,10 @@
                     alert('Account Levels selected: ' + values.join(', ') + ' (Range: ' + range.address + ')');
                     const reportType = document.getElementById('reportType').value;
                     if (reportType === 'customer') {
+                        document.getElementById('btnSelectAccountLevels').disabled = true;
                         document.getElementById('btnSelectClosingPeriods').disabled = false;
                     } else if (reportType === 'period') {
+                        document.getElementById('btnSelectAccountLevelsPeriod').disabled = true;
                         document.getElementById('btnSelectCustomerIds').disabled = false;
                     }
                     checkSubmitEnabled();
@@ -239,36 +244,13 @@
                     document.getElementById('selectedClosingPeriodsDisplay').textContent =
                         'Selected: ' + values.join(', ') + ' (Range: ' + range.address + ')';
                     alert('Closing Periods selected: ' + values.join(', ') + ' (Range: ' + range.address + ')');
+                    // Only enable submit
+                    document.getElementById('btnSelectClosingPeriods').disabled = true;
                     checkSubmitEnabled();
                 });
             } catch (error) {
                 console.error(error);
                 alert('Error selecting Closing Periods range');
-            }
-        }
-
-        async function selectClosingPeriod() {
-            try {
-                await Excel.run(async (context) => {
-                    const range = context.workbook.getSelectedRange();
-                    range.load(["address", "values"]);
-                    await context.sync();
-                    if (range.values.length !== 1 || range.values[0].length !== 1) {
-                        alert('Please select a single cell for Closing Period.');
-                        return;
-                    }
-                    const value = range.values[0][0];
-                    selectedRanges.closingPeriod = {
-                        address: range.address,
-                        value: value
-                    };
-                    document.getElementById('selectedClosingPeriodDisplay').textContent =
-                        'Selected: ' + value + ' (Cell: ' + range.address + ')';
-                    alert('Closing Period selected: ' + value + ' (Cell: ' + range.address + ')');
-                });
-            } catch (error) {
-                console.error(error);
-                alert('Error selecting Closing Period cell');
             }
         }
 
@@ -286,6 +268,8 @@
                     document.getElementById('selectedCustomerIdsDisplay').textContent =
                         'Selected: ' + values.join(', ') + ' (Range: ' + range.address + ')';
                     alert('Customer IDs selected: ' + values.join(', ') + ' (Range: ' + range.address + ')');
+                    // Only enable submit
+                    document.getElementById('btnSelectCustomerIds').disabled = true;
                     checkSubmitEnabled();
                 });
             } catch (error) {
