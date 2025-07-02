@@ -59,6 +59,19 @@
             border-radius: 4px;
             margin: 10px 0;
         }
+        .step {
+            margin: 15px 0;
+            padding: 10px;
+            border-left: 3px solid #0078d4;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .step-number {
+            font-weight: bold;
+            color: #0078d4;
+            margin-right: 10px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -89,14 +102,17 @@
             <!-- Customer Balance Form -->
             <div id="customerBalanceForm" class="addin-hidden">
                 <div id="customerStep1" class="step">
+                    <span class="step-number">Step 1:</span>
                     <button id="btnSelectCustomerId" onclick="selectCustomerId()">Select Customer ID</button>
                     <span id="selectedCustomerIdDisplay_customer" style="margin-left:10px;color:#0078d4;"></span>
                 </div>
                 <div id="customerStep2" class="step addin-hidden">
+                    <span class="step-number">Step 2:</span>
                     <button id="btnSelectAccountLevels_customer" onclick="selectAccountLevels('customer')">Select Account Levels</button>
                     <span id="selectedAccountLevelsDisplay_customer" style="margin-left:10px;color:#0078d4;"></span>
                 </div>
                 <div id="customerStep3" class="step addin-hidden">
+                    <span class="step-number">Step 3:</span>
                     <button id="btnSelectClosingPeriods_customer" onclick="selectClosingPeriods()">Select Closing Periods</button>
                     <span id="selectedClosingPeriodsDisplay_customer" style="margin-left:10px;color:#0078d4;"></span>
                 </div>
@@ -105,14 +121,17 @@
             <!-- Period Balance Form -->
             <div id="periodBalanceForm" class="addin-hidden">
                 <div id="periodStep1" class="step">
+                    <span class="step-number">Step 1:</span>
                     <button id="btnSelectClosingPeriod_period" onclick="selectClosingPeriod()">Select Closing Period</button>
                     <span id="selectedClosingPeriodDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
                 </div>
                 <div id="periodStep2" class="step addin-hidden">
+                    <span class="step-number">Step 2:</span>
                     <button id="btnSelectAccountLevels_period" onclick="selectAccountLevels('period')">Select Account Levels</button>
                     <span id="selectedAccountLevelsDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
                 </div>
                 <div id="periodStep3" class="step addin-hidden">
+                    <span class="step-number">Step 3:</span>
                     <button id="btnSelectCustomerIds_period" onclick="selectCustomerIds()">Select Customer IDs</button>
                     <span id="selectedCustomerIdsDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
                 </div>
