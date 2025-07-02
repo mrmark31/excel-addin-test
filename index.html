@@ -34,9 +34,16 @@
             border: none;
             cursor: pointer;
             font-size: 14px;
+            transition: all 0.3s ease;
         }
         button:hover {
             background: #106ebe;
+        }
+        button:disabled {
+            background: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+            opacity: 0.7;
         }
         .success { 
             color: #107c10; 
@@ -180,15 +187,15 @@
             document.querySelectorAll('#customerStep2, #customerStep3, #periodStep2, #periodStep3').forEach(el => el.classList.add('addin-hidden'));
 
             // Re-enable all buttons
-            document.getElementById('btnSelectCustomerId').disabled = false;
-            document.getElementById('btnSelectAccountLevels_customer').disabled = false;
-            document.getElementById('btnSelectClosingPeriods_customer').disabled = false;
-            document.getElementById('btnSelectClosingPeriod_period').disabled = false;
-            document.getElementById('btnSelectAccountLevels_period').disabled = false;
-            document.getElementById('btnSelectCustomerIds_period').disabled = false;
+            enableButton('btnSelectCustomerId');
+            enableButton('btnSelectAccountLevels_customer');
+            enableButton('btnSelectClosingPeriods_customer');
+            enableButton('btnSelectClosingPeriod_period');
+            enableButton('btnSelectAccountLevels_period');
+            enableButton('btnSelectCustomerIds_period');
             
             // Re-enable submit button
-            document.getElementById('submitButton').disabled = false;
+            enableButton('submitButton');
 
             // Clear display texts
             document.getElementById('selectedCustomerIdDisplay_customer').textContent = '';
@@ -229,6 +236,30 @@
             customerIds: null
         };
 
+        // Helper function to disable a button with visual feedback
+        function disableButton(buttonId) {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                button.disabled = true;
+                button.style.background = '#cccccc';
+                button.style.color = '#666666';
+                button.style.cursor = 'not-allowed';
+                button.style.opacity = '0.7';
+            }
+        }
+
+        // Helper function to enable a button with visual feedback
+        function enableButton(buttonId) {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                button.disabled = false;
+                button.style.background = '#0078d4';
+                button.style.color = 'white';
+                button.style.cursor = 'pointer';
+                button.style.opacity = '1';
+            }
+        }
+
         async function selectCustomerId() {
             console.log('selectCustomerId() called.');
             try {
@@ -246,7 +277,7 @@
                     showMessage('Customer ID selected.');
                     
                     // Disable button and advance workflow
-                    document.getElementById('btnSelectCustomerId').disabled = true;
+                    disableButton('btnSelectCustomerId');
                     document.getElementById('customerStep2').classList.remove('addin-hidden');
                     checkSubmitEnabled();
                 });
@@ -270,12 +301,12 @@
                     if (contextType === 'customer') {
                         document.getElementById('selectedAccountLevelsDisplay_customer').textContent = 'Selected: ' + values.join(', ') + ' (from ' + range.address + ')';
                         // Disable button and advance workflow
-                        document.getElementById('btnSelectAccountLevels_customer').disabled = true;
+                        disableButton('btnSelectAccountLevels_customer');
                         document.getElementById('customerStep3').classList.remove('addin-hidden');
                     } else if (contextType === 'period') {
                         document.getElementById('selectedAccountLevelsDisplay_period').textContent = 'Selected: ' + values.join(', ') + ' (from ' + range.address + ')';
                         // Disable button and advance workflow
-                        document.getElementById('btnSelectAccountLevels_period').disabled = true;
+                        disableButton('btnSelectAccountLevels_period');
                         document.getElementById('periodStep3').classList.remove('addin-hidden');
                     }
                     checkSubmitEnabled();
@@ -303,7 +334,7 @@
                     showMessage('Closing Period selected.');
                     
                     // Disable button and advance workflow
-                    document.getElementById('btnSelectClosingPeriod_period').disabled = true;
+                    disableButton('btnSelectClosingPeriod_period');
                     document.getElementById('periodStep2').classList.remove('addin-hidden');
                     checkSubmitEnabled();
                 });
@@ -326,7 +357,7 @@
                     showMessage('Closing Periods selected.');
                     
                     // Disable button and advance workflow
-                    document.getElementById('btnSelectClosingPeriods_customer').disabled = true;
+                    disableButton('btnSelectClosingPeriods_customer');
                     checkSubmitEnabled();
                 });
             } catch (error) {
@@ -348,7 +379,7 @@
                     showMessage('Customer IDs selected.');
                     
                     // Disable button and advance workflow
-                    document.getElementById('btnSelectCustomerIds_period').disabled = true;
+                    disableButton('btnSelectCustomerIds_period');
                     checkSubmitEnabled();
                 });
             } catch (error) {
@@ -449,7 +480,7 @@
                     showMessage('Report generated successfully!');
                     
                     // Disable submit button after successful submission
-                    document.getElementById('submitButton').disabled = true;
+                    disableButton('submitButton');
                 });
             } catch (error) {
                 console.error(error);
@@ -461,15 +492,15 @@
             console.log('resetSelections() called.');
             
             // Re-enable all selection buttons
-            document.getElementById('btnSelectCustomerId').disabled = false;
-            document.getElementById('btnSelectAccountLevels_customer').disabled = false;
-            document.getElementById('btnSelectClosingPeriods_customer').disabled = false;
-            document.getElementById('btnSelectClosingPeriod_period').disabled = false;
-            document.getElementById('btnSelectAccountLevels_period').disabled = false;
-            document.getElementById('btnSelectCustomerIds_period').disabled = false;
+            enableButton('btnSelectCustomerId');
+            enableButton('btnSelectAccountLevels_customer');
+            enableButton('btnSelectClosingPeriods_customer');
+            enableButton('btnSelectClosingPeriod_period');
+            enableButton('btnSelectAccountLevels_period');
+            enableButton('btnSelectCustomerIds_period');
             
             // Re-enable submit button
-            document.getElementById('submitButton').disabled = false;
+            enableButton('submitButton');
             
             // Reset workflow to initial state for selected report type
             handleReportTypeChange();
