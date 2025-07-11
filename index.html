@@ -444,12 +444,14 @@
                     let range1, range2, values1, values2, range1Obj, range2Obj;
                     if (reportType === 'customer') {
                         // Use Account Levels and Closing Periods
+                        console.log('Getting ranges for customer report:', selectedRanges.accountLevels.address, selectedRanges.closingPeriods.address);
                         range1Obj = sheet.getRange(selectedRanges.accountLevels.address);
                         range2Obj = sheet.getRange(selectedRanges.closingPeriods.address);
                         values1 = selectedRanges.accountLevels.values;
                         values2 = selectedRanges.closingPeriods.values;
                     } else if (reportType === 'period') {
                         // Use Account Levels and Customer IDs
+                        console.log('Getting ranges for period report:', selectedRanges.accountLevels.address, selectedRanges.customerIds.address);
                         range1Obj = sheet.getRange(selectedRanges.accountLevels.address);
                         range2Obj = sheet.getRange(selectedRanges.customerIds.address);
                         values1 = selectedRanges.accountLevels.values;
@@ -499,60 +501,69 @@
                     }
                     
                     // Create or get the "Ref Sheet" and save reference details
-                    let refSheet;
                     try {
-                        refSheet = context.workbook.worksheets.getItem("Ref Sheet");
-                        console.log('Ref Sheet already exists');
-                        // Clear existing content in Ref Sheet if it exists
+                        let refSheet;
                         try {
-                            refSheet.getUsedRange().clear();
-                        } catch (clearError) {
-                            // If no used range exists, that's fine for a new sheet
-                            console.log('No existing content to clear in Ref Sheet');
+                            refSheet = context.workbook.worksheets.getItem("Ref Sheet");
+                            console.log('Ref Sheet already exists');
+                            // Clear existing content in Ref Sheet if it exists
+                            try {
+                                const usedRange = refSheet.getUsedRange();
+                                if (usedRange) {
+                                    usedRange.clear();
+                                }
+                            } catch (clearError) {
+                                // If no used range exists, that's fine for a new sheet
+                                console.log('No existing content to clear in Ref Sheet');
+                            }
+                        } catch (error) {
+                            // If sheet doesn't exist, create it
+                            console.log('Creating new Ref Sheet');
+                            refSheet = context.workbook.worksheets.add("Ref Sheet");
                         }
-                    } catch (error) {
-                        // If sheet doesn't exist, create it
-                        console.log('Creating new Ref Sheet');
-                        refSheet = context.workbook.worksheets.add("Ref Sheet");
+                        
+                        // Save reference details
+                        console.log('Writing reference details to Ref Sheet');
+                        refSheet.getRange("A1").values = [["Report Type"]];
+                        refSheet.getRange("A2").values = [[reportType === 'customer' ? 'Balances by Customer' : 'Balances by Closing Period']];
+                        
+                        if (reportType === 'customer') {
+                            console.log('Customer report - saving customer ID:', selectedRanges.customerId.address);
+                            refSheet.getRange("A3").values = [["First Input (Customer ID)"]];
+                            refSheet.getRange("A4").values = [[selectedRanges.customerId.address]];
+                            
+                            console.log('Customer report - saving account levels:', selectedRanges.accountLevels.address);
+                            refSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
+                            refSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
+                            
+                            console.log('Customer report - saving closing periods:', selectedRanges.closingPeriods.address);
+                            refSheet.getRange("A7").values = [["Third Input (Closing Periods)"]];
+                            refSheet.getRange("A8").values = [[selectedRanges.closingPeriods.address]];
+                        } else if (reportType === 'period') {
+                            console.log('Period report - saving closing period:', selectedRanges.closingPeriod.address);
+                            refSheet.getRange("A3").values = [["First Input (Closing Period)"]];
+                            refSheet.getRange("A4").values = [[selectedRanges.closingPeriod.address]];
+                            
+                            console.log('Period report - saving account levels:', selectedRanges.accountLevels.address);
+                            refSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
+                            refSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
+                            
+                            console.log('Period report - saving customer IDs:', selectedRanges.customerIds.address);
+                            refSheet.getRange("A7").values = [["Third Input (Customer IDs)"]];
+                            refSheet.getRange("A8").values = [[selectedRanges.customerIds.address]];
+                        }
+                        
+                        // Add timestamp
+                        refSheet.getRange("A9").values = [["Generated On"]];
+                        refSheet.getRange("A10").values = [[new Date().toLocaleString()]];
+                        
+                        console.log('Ref Sheet creation and data writing completed successfully');
+                    } catch (refSheetError) {
+                        console.error('Error creating/writing to Ref Sheet:', refSheetError);
+                        showMessage('Warning: Could not create Ref Sheet, but report was generated successfully.', true);
                     }
-                    
-                    // Save reference details
-                    console.log('Writing reference details to Ref Sheet');
-                    refSheet.getRange("A1").values = [["Report Type"]];
-                    refSheet.getRange("A2").values = [[reportType === 'customer' ? 'Balances by Customer' : 'Balances by Closing Period']];
-                    
-                    if (reportType === 'customer') {
-                        console.log('Customer report - saving customer ID:', selectedRanges.customerId.address);
-                        refSheet.getRange("A3").values = [["First Input (Customer ID)"]];
-                        refSheet.getRange("A4").values = [[selectedRanges.customerId.address]];
-                        
-                        console.log('Customer report - saving account levels:', selectedRanges.accountLevels.address);
-                        refSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
-                        refSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
-                        
-                        console.log('Customer report - saving closing periods:', selectedRanges.closingPeriods.address);
-                        refSheet.getRange("A7").values = [["Third Input (Closing Periods)"]];
-                        refSheet.getRange("A8").values = [[selectedRanges.closingPeriods.address]];
-                    } else if (reportType === 'period') {
-                        console.log('Period report - saving closing period:', selectedRanges.closingPeriod.address);
-                        refSheet.getRange("A3").values = [["First Input (Closing Period)"]];
-                        refSheet.getRange("A4").values = [[selectedRanges.closingPeriod.address]];
-                        
-                        console.log('Period report - saving account levels:', selectedRanges.accountLevels.address);
-                        refSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
-                        refSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
-                        
-                        console.log('Period report - saving customer IDs:', selectedRanges.customerIds.address);
-                        refSheet.getRange("A7").values = [["Third Input (Customer IDs)"]];
-                        refSheet.getRange("A8").values = [[selectedRanges.customerIds.address]];
-                    }
-                    
-                    // Add timestamp
-                    refSheet.getRange("A9").values = [["Generated On"]];
-                    refSheet.getRange("A10").values = [[new Date().toLocaleString()]];
                     
                     await context.sync();
-                    console.log('Ref Sheet creation and data writing completed successfully');
                     showMessage('Report generated successfully! Reference details saved to "Ref Sheet".');
                     
                     // Disable submit button after successful submission
