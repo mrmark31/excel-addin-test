@@ -72,22 +72,7 @@
             margin-right: 10px;
             font-size: 14px;
         }
-        .modal {
-            display: none; 
-            position: fixed; 
-            z-index: 1000; 
-            left: 0; top: 0; width: 100%; height: 100%;
-            overflow: auto; background: rgba(0,0,0,0.4);
-        }
-        .modal-content {
-            background: #fff; margin: 10% auto; padding: 30px 20px; border-radius: 8px;
-            width: 90%; max-width: 400px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            text-align: center;
-        }
-        .modal-content button {
-            margin-top: 20px;
-            width: 120px;
-        }
+
     </style>
 </head>
 <body>
@@ -97,13 +82,7 @@
             <div id="status-message" style="display: none; padding: 10px; border-radius: 4px;"></div>
         </div>
 
-        <!-- Modal for step instructions -->
-        <div id="stepModal" class="modal">
-            <div class="modal-content">
-                <div id="modalInstructionText"></div>
-                <button onclick="closeStepModal()">OK</button>
-            </div>
-        </div>
+
 
         <!-- Login Form -->
         <div id="loginForm">
@@ -194,29 +173,7 @@
             }, 5000);
         }
 
-        // Step instructions for each workflow
-        const stepInstructions = {
-            customer: [
-                'Step 1: Select a cell in Excel with Customer ID entered.',
-                'Step 2: Enter all the account levels in a single column and select the range of cells with the values entered.',
-                'Step 3: Enter all the closing periods in a single row and select the range of cells with the values entered.'
-            ],
-            period: [
-                'Step 1: Select a cell in Excel with the Closing Period entered.',
-                'Step 2: Enter all the account levels in a single column and select the range of cells with the values entered.',
-                'Step 3: Enter all the Customer IDs in a single row and select the range of cells with the values entered.'
-            ]
-        };
-        let currentStepIndex = 0;
         let currentWorkflow = '';
-
-        function showStepModal(instruction) {
-            document.getElementById('modalInstructionText').textContent = instruction;
-            document.getElementById('stepModal').style.display = 'block';
-        }
-        function closeStepModal() {
-            document.getElementById('stepModal').style.display = 'none';
-        }
 
         function login() {
             console.log('login() called.');
@@ -226,8 +183,6 @@
                 document.getElementById('loginForm').classList.add('addin-hidden');
                 document.getElementById('mainForm').classList.remove('addin-hidden');
                 handleReportTypeChange();
-                // Show report type selection instruction
-                showStepModal('Please select a report type to begin.');
             }
         }
 
@@ -281,18 +236,12 @@
             // Enable the correct workflow
             if (reportType === 'customer') {
                 currentWorkflow = 'customer';
-                currentStepIndex = 0;
                 customerForm.classList.remove('addin-hidden');
                 document.getElementById('customerStep1').classList.remove('addin-hidden');
-                // Show first step instruction
-                showStepModal(stepInstructions.customer[0]);
             } else if (reportType === 'period') {
                 currentWorkflow = 'period';
-                currentStepIndex = 0;
                 periodForm.classList.remove('addin-hidden');
                 document.getElementById('periodStep1').classList.remove('addin-hidden');
-                // Show first step instruction
-                showStepModal(stepInstructions.period[0]);
             } else {
                 currentWorkflow = '';
             }
@@ -330,11 +279,7 @@
             }
         }
 
-        // Show next step instruction before each step
         async function selectCustomerId() {
-            if (currentWorkflow === 'customer') {
-                closeStepModal();
-            }
             console.log('selectCustomerId() called.');
             try {
                 await Excel.run(async (context) => {
@@ -354,9 +299,6 @@
                     disableButton('btnSelectCustomerId');
                     document.getElementById('customerStep2').classList.remove('addin-hidden');
                     checkSubmitEnabled();
-                    // Show next step instruction
-                    currentStepIndex = 1;
-                    showStepModal(stepInstructions.customer[1]);
                 });
             } catch (error) {
                 console.error('Error in selectCustomerId:', error);
@@ -365,9 +307,6 @@
         }
 
         async function selectAccountLevels(contextType) {
-            if (currentWorkflow && (contextType === currentWorkflow)) {
-                closeStepModal();
-            }
             console.log('selectAccountLevels() called. Context:', contextType);
             try {
                 await Excel.run(async (context) => {
@@ -383,17 +322,11 @@
                         // Disable button and advance workflow
                         disableButton('btnSelectAccountLevels_customer');
                         document.getElementById('customerStep3').classList.remove('addin-hidden');
-                        // Show next step instruction
-                        currentStepIndex = 2;
-                        showStepModal(stepInstructions.customer[2]);
                     } else if (contextType === 'period') {
                         document.getElementById('selectedAccountLevelsDisplay_period').textContent = 'Selected: ' + values.join(', ') + ' (from ' + range.address + ')';
                         // Disable button and advance workflow
                         disableButton('btnSelectAccountLevels_period');
                         document.getElementById('periodStep3').classList.remove('addin-hidden');
-                        // Show next step instruction
-                        currentStepIndex = 2;
-                        showStepModal(stepInstructions.period[2]);
                     }
                     checkSubmitEnabled();
                 });
@@ -404,9 +337,6 @@
         }
 
         async function selectClosingPeriod() {
-            if (currentWorkflow === 'period') {
-                closeStepModal();
-            }
             console.log('selectClosingPeriod() called.');
             try {
                 await Excel.run(async (context) => {
@@ -426,9 +356,6 @@
                     disableButton('btnSelectClosingPeriod_period');
                     document.getElementById('periodStep2').classList.remove('addin-hidden');
                     checkSubmitEnabled();
-                    // Show next step instruction
-                    currentStepIndex = 1;
-                    showStepModal(stepInstructions.period[1]);
                 });
             } catch (error) {
                 console.error('Error in selectClosingPeriod:', error);
@@ -437,9 +364,6 @@
         }
 
         async function selectClosingPeriods() {
-            if (currentWorkflow === 'customer') {
-                closeStepModal();
-            }
             console.log('selectClosingPeriods() called.');
             try {
                 await Excel.run(async (context) => {
@@ -463,9 +387,6 @@
         }
 
         async function selectCustomerIds() {
-            if (currentWorkflow === 'period') {
-                closeStepModal();
-            }
             console.log('selectCustomerIds() called.');
             try {
                 await Excel.run(async (context) => {
