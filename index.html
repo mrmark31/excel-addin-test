@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Excel Web Add-in</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" type="text/javascript"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            max-width: 800px; 
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .addin-hidden {
+            display: none;
+        }
+        input, select, button {
+            margin: 10px 0;
+            padding: 8px 12px;
+            width: 200px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #0078d4;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #106ebe;
+        }
+        button:disabled {
+            background: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .success { 
+            color: #107c10; 
+            background: #dff6dd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error { 
+            color: #d13438; 
+            background: #fde7e9;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .step {
+            margin: 15px 0;
+            padding: 10px;
+            border-left: 3px solid #0078d4;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .step-number {
+            font-weight: bold;
+            color: #0078d4;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background: #fff; margin: 10% auto; padding: 30px 20px; border-radius: 8px;
+            width: 90%; max-width: 400px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .modal-content button {
+            margin-top: 20px;
+            width: 120px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Status Message Area -->
+        <div id="status-container" style="margin-top: 15px;">
+            <div id="status-message" style="display: none; padding: 10px; border-radius: 4px;"></div>
+        </div>
+
+        <!-- Modal for step instructions -->
+        <div id="stepModal" class="modal">
+            <div class="modal-content">
+                <div id="modalInstructionText"></div>
+                <button onclick="closeStepModal()">OK</button>
+            </div>
+        </div>
+
+        <!-- Login Form -->
+        <div id="loginForm">
+            <h2>Login</h2>
+            <input type="text" id="username" placeholder="Username" /><br/>
+            <input type="password" id="password" placeholder="Password" /><br/>
+            <button onclick="login()">Sign In</button>
+            <button onclick="resetForm()">Reset</button>
+        </div>
+
+        <!-- Main Form -->
+        <div id="mainForm" class="addin-hidden">
+            <h2>Excel Report Generator</h2>
+            <select id="reportType" onchange="handleReportTypeChange()">
+                <option value="">Select Report Type</option>
+                <option value="customer">Balances by Customer</option>
+                <option value="period">Balances by Closing Period</option>
+            </select>
+
+            <!-- Customer Balance Form -->
+            <div id="customerBalanceForm" class="addin-hidden">
+                <div id="customerStep1" class="step">
+                    <span class="step-number">Step 1:</span>
+                    <button id="btnSelectCustomerId" onclick="selectCustomerId()">Select Customer ID</button>
+                    <span id="selectedCustomerIdDisplay_customer" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
+                <div id="customerStep2" class="step addin-hidden">
+                    <span class="step-number">Step 2:</span>
+                    <button id="btnSelectAccountLevels_customer" onclick="selectAccountLevels('customer')">Select Account Levels</button>
+                    <span id="selectedAccountLevelsDisplay_customer" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
+                <div id="customerStep3" class="step addin-hidden">
+                    <span class="step-number">Step 3:</span>
+                    <button id="btnSelectClosingPeriods_customer" onclick="selectClosingPeriods()">Select Closing Periods</button>
+                    <span id="selectedClosingPeriodsDisplay_customer" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
+            </div>
+
+            <!-- Period Balance Form -->
+            <div id="periodBalanceForm" class="addin-hidden">
+                <div id="periodStep1" class="step">
+                    <span class="step-number">Step 1:</span>
+                    <button id="btnSelectClosingPeriod_period" onclick="selectClosingPeriod()">Select Closing Period</button>
+                    <span id="selectedClosingPeriodDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
+                <div id="periodStep2" class="step addin-hidden">
+                    <span class="step-number">Step 2:</span>
+                    <button id="btnSelectAccountLevels_period" onclick="selectAccountLevels('period')">Select Account Levels</button>
+                    <span id="selectedAccountLevelsDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
+                <div id="periodStep3" class="step addin-hidden">
+                    <span class="step-number">Step 3:</span>
+                    <button id="btnSelectCustomerIds_period" onclick="selectCustomerIds()">Select Customer IDs</button>
+                    <span id="selectedCustomerIdsDisplay_period" style="margin-left:10px;color:#0078d4;"></span>
+                </div>
+            </div>
+
+            <button id="submitButton" class="addin-hidden" onclick="submitForm()">Submit</button>
+            <!-- Reset Selections Button (only visible after login) -->
+            <div style="margin-top:20px; text-align:center;">
+                <button id="resetSelectionsButton" onclick="resetSelections()">Reset Selections</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        Office.onReady(function(info) {
+            if (info.host === Office.HostType.Excel) {
+                console.log('Add-in ready. Host: Excel.');
+            }
+        });
+
+        function showMessage(text, isError = false) {
+            const messageDiv = document.getElementById('status-message');
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+            if (isError) {
+                messageDiv.style.backgroundColor = '#fde7e9'; // Light red
+                messageDiv.style.color = '#d13438'; // Dark red
+            } else {
+                messageDiv.style.backgroundColor = '#dff6dd'; // Light green
+                messageDiv.style.color = '#107c10'; // Dark green
+            }
+
+            // Hide the message after 5 seconds
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Step instructions for each workflow
+        const stepInstructions = {
+            customer: [
+                'Step 1: Select a cell in Excel with Customer ID entered.',
+                'Step 2: Enter all the account levels in a single column and select the range of cells with the values entered.',
+                'Step 3: Enter all the closing periods in a single row and select the range of cells with the values entered.'
+            ],
+            period: [
+                'Step 1: Select a cell in Excel with the Closing Period entered.',
+                'Step 2: Enter all the account levels in a single column and select the range of cells with the values entered.',
+                'Step 3: Enter all the Customer IDs in a single row and select the range of cells with the values entered.'
+            ]
+        };
+        let currentStepIndex = 0;
+        let currentWorkflow = '';
+
+        function showStepModal(instruction) {
+            document.getElementById('modalInstructionText').textContent = instruction;
+            document.getElementById('stepModal').style.display = 'block';
+        }
+        function closeStepModal() {
+            document.getElementById('stepModal').style.display = 'none';
+        }
+
+        function login() {
+            console.log('login() called.');
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            if (username && password) {
+                document.getElementById('loginForm').classList.add('addin-hidden');
+                document.getElementById('mainForm').classList.remove('addin-hidden');
+                handleReportTypeChange();
+                // Show report type selection instruction
+                showStepModal('Please select a report type to begin.');
+            }
+        }
+
+        function resetForm() {
+            console.log('resetForm() called.');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        function handleReportTypeChange() {
+            const reportType = document.getElementById('reportType').value;
+            const customerForm = document.getElementById('customerBalanceForm');
+            const periodForm = document.getElementById('periodBalanceForm');
+            
+            // Reset everything
+            console.log('Resetting forms and selections.');
+            customerForm.classList.add('addin-hidden');
+            periodForm.classList.add('addin-hidden');
+            
+            // Hide all steps except the first one in each form
+            document.querySelectorAll('#customerStep2, #customerStep3, #periodStep2, #periodStep3').forEach(el => el.classList.add('addin-hidden'));
+
+            // Re-enable all buttons
+            enableButton('btnSelectCustomerId');
+            enableButton('btnSelectAccountLevels_customer');
+            enableButton('btnSelectClosingPeriods_customer');
+            enableButton('btnSelectClosingPeriod_period');
+            enableButton('btnSelectAccountLevels_period');
+            enableButton('btnSelectCustomerIds_period');
+            
+            // Re-enable submit button
+            enableButton('submitButton');
+
+            // Clear display texts
+            document.getElementById('selectedCustomerIdDisplay_customer').textContent = '';
+            document.getElementById('selectedAccountLevelsDisplay_customer').textContent = '';
+            document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = '';
+            document.getElementById('selectedAccountLevelsDisplay_period').textContent = '';
+            document.getElementById('selectedCustomerIdsDisplay_period').textContent = '';
+            document.getElementById('selectedClosingPeriodDisplay_period').textContent = '';
+
+            // Clear saved data
+            selectedRanges.customerId = null;
+            selectedRanges.accountLevels = null;
+            selectedRanges.closingPeriods = null;
+            selectedRanges.customerIds = null;
+            selectedRanges.closingPeriod = null;
+            
+            checkSubmitEnabled();
+
+            // Enable the correct workflow
+            if (reportType === 'customer') {
+                currentWorkflow = 'customer';
+                currentStepIndex = 0;
+                customerForm.classList.remove('addin-hidden');
+                document.getElementById('customerStep1').classList.remove('addin-hidden');
+                // Show first step instruction
+                showStepModal(stepInstructions.customer[0]);
+            } else if (reportType === 'period') {
+                currentWorkflow = 'period';
+                currentStepIndex = 0;
+                periodForm.classList.remove('addin-hidden');
+                document.getElementById('periodStep1').classList.remove('addin-hidden');
+                // Show first step instruction
+                showStepModal(stepInstructions.period[0]);
+            } else {
+                currentWorkflow = '';
+            }
+        }
+
+        let selectedRanges = {
+            customerId: null,
+            accountLevels: null,
+            closingPeriods: null,
+            closingPeriod: null,
+            customerIds: null
+        };
+
+        // Helper function to disable a button with visual feedback
+        function disableButton(buttonId) {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                button.disabled = true;
+                button.style.background = '#cccccc';
+                button.style.color = '#666666';
+                button.style.cursor = 'not-allowed';
+                button.style.opacity = '0.7';
+            }
+        }
+
+        // Helper function to enable a button with visual feedback
+        function enableButton(buttonId) {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                button.disabled = false;
+                button.style.background = '#0078d4';
+                button.style.color = 'white';
+                button.style.cursor = 'pointer';
+                button.style.opacity = '1';
+            }
+        }
+
+        // Show next step instruction before each step
+        async function selectCustomerId() {
+            if (currentWorkflow === 'customer') {
+                closeStepModal();
+            }
+            console.log('selectCustomerId() called.');
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load(["address", "values"]);
+                    await context.sync();
+                    if (range.values.length !== 1 || range.values[0].length !== 1) {
+                        showMessage('Please select a single cell for Customer ID.', true);
+                        return;
+                    }
+                    const value = range.values[0][0];
+                    selectedRanges.customerId = { address: range.address, value: value };
+                    document.getElementById('selectedCustomerIdDisplay_customer').textContent = 'Selected: ' + value;
+                    showMessage('Customer ID selected.');
+                    
+                    // Disable button and advance workflow
+                    disableButton('btnSelectCustomerId');
+                    document.getElementById('customerStep2').classList.remove('addin-hidden');
+                    checkSubmitEnabled();
+                    // Show next step instruction
+                    currentStepIndex = 1;
+                    showStepModal(stepInstructions.customer[1]);
+                });
+            } catch (error) {
+                console.error('Error in selectCustomerId:', error);
+                showMessage('Error selecting Customer ID.', true);
+            }
+        }
+
+        async function selectAccountLevels(contextType) {
+            if (currentWorkflow && (contextType === currentWorkflow)) {
+                closeStepModal();
+            }
+            console.log('selectAccountLevels() called. Context:', contextType);
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load(["address", "values"]);
+                    await context.sync();
+                    const values = range.values.flat();
+                    selectedRanges.accountLevels = { address: range.address, values: values };
+                    showMessage('Account Levels selected.');
+                    
+                    if (contextType === 'customer') {
+                        document.getElementById('selectedAccountLevelsDisplay_customer').textContent = 'Selected: ' + values.join(', ') + ' (from ' + range.address + ')';
+                        // Disable button and advance workflow
+                        disableButton('btnSelectAccountLevels_customer');
+                        document.getElementById('customerStep3').classList.remove('addin-hidden');
+                        // Show next step instruction
+                        currentStepIndex = 2;
+                        showStepModal(stepInstructions.customer[2]);
+                    } else if (contextType === 'period') {
+                        document.getElementById('selectedAccountLevelsDisplay_period').textContent = 'Selected: ' + values.join(', ') + ' (from ' + range.address + ')';
+                        // Disable button and advance workflow
+                        disableButton('btnSelectAccountLevels_period');
+                        document.getElementById('periodStep3').classList.remove('addin-hidden');
+                        // Show next step instruction
+                        currentStepIndex = 2;
+                        showStepModal(stepInstructions.period[2]);
+                    }
+                    checkSubmitEnabled();
+                });
+            } catch (error) {
+                console.error('Error in selectAccountLevels:', error);
+                showMessage('Error selecting Account Levels.', true);
+            }
+        }
+
+        async function selectClosingPeriod() {
+            if (currentWorkflow === 'period') {
+                closeStepModal();
+            }
+            console.log('selectClosingPeriod() called.');
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load(["address", "values"]);
+                    await context.sync();
+                    if (range.values.length !== 1 || range.values[0].length !== 1) {
+                        showMessage('Please select a single cell for Closing Period.', true);
+                        return;
+                    }
+                    const value = range.values[0][0];
+                    selectedRanges.closingPeriod = { address: range.address, value: value };
+                    document.getElementById('selectedClosingPeriodDisplay_period').textContent = 'Selected: ' + value;
+                    showMessage('Closing Period selected.');
+                    
+                    // Disable button and advance workflow
+                    disableButton('btnSelectClosingPeriod_period');
+                    document.getElementById('periodStep2').classList.remove('addin-hidden');
+                    checkSubmitEnabled();
+                    // Show next step instruction
+                    currentStepIndex = 1;
+                    showStepModal(stepInstructions.period[1]);
+                });
+            } catch (error) {
+                console.error('Error in selectClosingPeriod:', error);
+                showMessage('Error selecting Closing Period.', true);
+            }
+        }
+
+        async function selectClosingPeriods() {
+            if (currentWorkflow === 'customer') {
+                closeStepModal();
+            }
+            console.log('selectClosingPeriods() called.');
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load(["address", "values"]);
+                    await context.sync();
+                    const values = range.values.flat();
+                    selectedRanges.closingPeriods = { address: range.address, values: values };
+                    document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = 'Selected: ' + values.join(', ') + ' (from ' + range.address + ')';
+                    showMessage('Closing Periods selected.');
+                    
+                    // Disable button and advance workflow
+                    disableButton('btnSelectClosingPeriods_customer');
+                    checkSubmitEnabled();
+                    // End of workflow, no next step
+                });
+            } catch (error) {
+                console.error('Error in selectClosingPeriods:', error);
+                showMessage('Error selecting Closing Periods.', true);
+            }
+        }
+
+        async function selectCustomerIds() {
+            if (currentWorkflow === 'period') {
+                closeStepModal();
+            }
+            console.log('selectCustomerIds() called.');
+            try {
+                await Excel.run(async (context) => {
+                    const range = context.workbook.getSelectedRange();
+                    range.load(["address", "values"]);
+                    await context.sync();
+                    const values = range.values.flat();
+                    selectedRanges.customerIds = { address: range.address, values: values };
+                    document.getElementById('selectedCustomerIdsDisplay_period').textContent = 'Selected: ' + values.join(', ') + ' (from ' + range.address + ')';
+                    showMessage('Customer IDs selected.');
+                    
+                    // Disable button and advance workflow
+                    disableButton('btnSelectCustomerIds_period');
+                    checkSubmitEnabled();
+                    // End of workflow, no next step
+                });
+            } catch (error) {
+                console.error('Error in selectCustomerIds:', error);
+                showMessage('Error selecting Customer IDs.', true);
+            }
+        }
+
+        // Single function to control submit button visibility
+        function checkSubmitEnabled() {
+            const reportType = document.getElementById('reportType').value;
+            const submitButton = document.getElementById('submitButton');
+            let isComplete = false;
+
+            if (reportType === 'customer') {
+                if (selectedRanges.customerId && selectedRanges.accountLevels && selectedRanges.closingPeriods) {
+                    isComplete = true;
+                }
+            } else if (reportType === 'period') {
+                if (selectedRanges.closingPeriod && selectedRanges.accountLevels && selectedRanges.customerIds) {
+                    isComplete = true;
+                }
+            }
+
+            if (isComplete) {
+                console.log('All selections complete. Enabling Submit button.');
+                submitButton.classList.remove('addin-hidden');
+                submitButton.disabled = false;
+            } else {
+                console.log('Selections not complete. Hiding Submit button.');
+                submitButton.classList.add('addin-hidden');
+                submitButton.disabled = true;
+            }
+        }
+
+        async function submitForm() {
+            const reportType = document.getElementById('reportType').value;
+            try {
+                await Excel.run(async (context) => {
+                    const sheet = context.workbook.worksheets.getActiveWorksheet();
+                    let range1, range2, values1, values2, range1Obj, range2Obj;
+                    if (reportType === 'customer') {
+                        // Use Account Levels and Closing Periods
+                        range1Obj = sheet.getRange(selectedRanges.accountLevels.address);
+                        range2Obj = sheet.getRange(selectedRanges.closingPeriods.address);
+                        values1 = selectedRanges.accountLevels.values;
+                        values2 = selectedRanges.closingPeriods.values;
+                    } else if (reportType === 'period') {
+                        // Use Account Levels and Customer IDs
+                        range1Obj = sheet.getRange(selectedRanges.accountLevels.address);
+                        range2Obj = sheet.getRange(selectedRanges.customerIds.address);
+                        values1 = selectedRanges.accountLevels.values;
+                        values2 = selectedRanges.customerIds.values;
+                    } else {
+                        alert('Please select a report type.');
+                        return;
+                    }
+                    range1Obj.load(["rowIndex", "columnIndex", "rowCount", "columnCount"]);
+                    range2Obj.load(["rowIndex", "columnIndex", "rowCount", "columnCount"]);
+                    await context.sync();
+                    // Determine which is horizontal (columns) and which is vertical (rows)
+                    let colRange, rowRange, colValues, rowValues;
+                    if (range1Obj.rowCount === 1 && range1Obj.columnCount > 1) {
+                        // range1 is horizontal
+                        colRange = range1Obj;
+                        colValues = values1;
+                    } else if (range2Obj.rowCount === 1 && range2Obj.columnCount > 1) {
+                        // range2 is horizontal
+                        colRange = range2Obj;
+                        colValues = values2;
+                    } else {
+                        alert('Please select one horizontal (row) range and one vertical (column) range.');
+                        return;
+                    }
+                    if (range1Obj.columnCount === 1 && range1Obj.rowCount > 1) {
+                        // range1 is vertical
+                        rowRange = range1Obj;
+                        rowValues = values1;
+                    } else if (range2Obj.columnCount === 1 && range2Obj.rowCount > 1) {
+                        // range2 is vertical
+                        rowRange = range2Obj;
+                        rowValues = values2;
+                    } else {
+                        alert('Please select one horizontal (row) range and one vertical (column) range.');
+                        return;
+                    }
+                    // Write balances in the intersection grid
+                    for (let r = 0; r < rowValues.length; r++) {
+                        for (let c = 0; c < colValues.length; c++) {
+                            const row = rowRange.rowIndex + r;
+                            const col = colRange.columnIndex + c;
+                            const cell = sheet.getCell(row, col);
+                            const balance = Math.floor(Math.random() * 10000);
+                            cell.values = [[balance]];
+                        }
+                    }
+                    
+                    // Create or get the "Ref Sheet" and save reference details
+                    let refSheet;
+                    try {
+                        refSheet = context.workbook.worksheets.getItem("Ref Sheet");
+                    } catch (error) {
+                        // If sheet doesn't exist, create it
+                        refSheet = context.workbook.worksheets.add("Ref Sheet");
+                    }
+                    
+                    // Clear existing content in Ref Sheet
+                    refSheet.getUsedRange().clear();
+                    
+                    // Save reference details
+                    refSheet.getRange("A1").values = [["Report Type"]];
+                    refSheet.getRange("A2").values = [[reportType === 'customer' ? 'Balances by Customer' : 'Balances by Closing Period']];
+                    
+                    if (reportType === 'customer') {
+                        refSheet.getRange("A3").values = [["First Input (Customer ID)"]];
+                        refSheet.getRange("A4").values = [[selectedRanges.customerId.address]];
+                        
+                        refSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
+                        refSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
+                        
+                        refSheet.getRange("A7").values = [["Third Input (Closing Periods)"]];
+                        refSheet.getRange("A8").values = [[selectedRanges.closingPeriods.address]];
+                    } else if (reportType === 'period') {
+                        refSheet.getRange("A3").values = [["First Input (Closing Period)"]];
+                        refSheet.getRange("A4").values = [[selectedRanges.closingPeriod.address]];
+                        
+                        refSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
+                        refSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
+                        
+                        refSheet.getRange("A7").values = [["Third Input (Customer IDs)"]];
+                        refSheet.getRange("A8").values = [[selectedRanges.customerIds.address]];
+                    }
+                    
+                    // Add timestamp
+                    refSheet.getRange("A9").values = [["Generated On"]];
+                    refSheet.getRange("A10").values = [[new Date().toLocaleString()]];
+                    
+                    await context.sync();
+                    showMessage('Report generated successfully! Reference details saved to "Ref Sheet".');
+                    
+                    // Disable submit button after successful submission
+                    disableButton('submitButton');
+                });
+            } catch (error) {
+                console.error(error);
+                showMessage('Error generating report: ' + error.message, true);
+            }
+        }
+
+        function resetSelections() {
+            console.log('resetSelections() called.');
+            
+            // Re-enable all selection buttons
+            enableButton('btnSelectCustomerId');
+            enableButton('btnSelectAccountLevels_customer');
+            enableButton('btnSelectClosingPeriods_customer');
+            enableButton('btnSelectClosingPeriod_period');
+            enableButton('btnSelectAccountLevels_period');
+            enableButton('btnSelectCustomerIds_period');
+            
+            // Re-enable submit button
+            enableButton('submitButton');
+            
+            // Reset workflow to initial state for selected report type
+            handleReportTypeChange();
+        }
+    </script>
+</body>
+</html> 
