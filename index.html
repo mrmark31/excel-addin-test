@@ -596,7 +596,21 @@
                     disableButton('submitButton');
                     
                     // Show Save Template button after successful report generation
-                    document.getElementById('saveTemplateButton').classList.remove('addin-hidden');
+                    console.log('Attempting to show Save Template button...');
+                    setTimeout(() => {
+                        const saveTemplateButton = document.getElementById('saveTemplateButton');
+                        if (saveTemplateButton) {
+                            console.log('Save Template button found, removing addin-hidden class');
+                            saveTemplateButton.classList.remove('addin-hidden');
+                            saveTemplateButton.style.display = 'inline-block';
+                            saveTemplateButton.style.backgroundColor = '#28a745'; // Green color to make it stand out
+                            console.log('Save Template button should now be visible');
+                            console.log('Button display style:', saveTemplateButton.style.display);
+                            console.log('Button classes:', saveTemplateButton.className);
+                        } else {
+                            console.error('Save Template button not found in DOM');
+                        }
+                    }, 100); // Small delay to ensure DOM is ready
                 });
             } catch (error) {
                 console.error(error);
