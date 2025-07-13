@@ -101,13 +101,22 @@
             <div id="reportOptions" class="addin-hidden">
                 <h3>Choose an option:</h3>
                 <div style="margin: 20px 0;">
-                    <button id="refreshReportBtn" onclick="refreshReport()" style="width: 200px; margin: 10px; background: #28a745;">
+                    <button id="refreshReportBtn" onclick="refreshReport()" 
+                            onmouseover="showRefreshTooltip()" 
+                            onmouseout="hideRefreshTooltip()"
+                            style="width: 200px; margin: 10px; background: #28a745; position: relative;">
                         🔄 Refresh the Report
                     </button>
                     <br/>
                     <button id="generateNewReportBtn" onclick="generateNewReport()" style="width: 200px; margin: 10px; background: #0078d4;">
                         ➕ Generate New Report
                     </button>
+                </div>
+                
+                <!-- Refresh Tooltip -->
+                <div id="refreshTooltip" style="display: none; position: absolute; background: #333; color: white; padding: 10px; border-radius: 5px; font-size: 12px; max-width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">
+                    <strong>Input Fields Required:</strong><br/>
+                    <div id="tooltipContent"></div>
                 </div>
             </div>
             
@@ -292,8 +301,220 @@
             showReportTypeSelection();
         }
 
+        async function showRefreshTooltip() {
+            console.log('showRefreshTooltip() called.');
+            try {
+                await Excel.run(async (context) => {
+                    const refSheet = context.workbook.worksheets.getItem("Ref Sheet");
+                    refSheet.load("usedRange");
+                    await context.sync();
+                    
+                    // Read the template data from Ref Sheet
+                    const usedRange = refSheet.getUsedRange();
+                    usedRange.load("values");
+                    await context.sync();
+                    
+                    const templateData = usedRange.values;
+                    console.log('Template data loaded for tooltip:', templateData);
+                    
+                    // Parse the template data to get input fields
+                    let reportType = '';
+                    let tooltipContent = '';
+                    
+                    // Find report type
+                    for (let i = 0; i < templateData.length; i++) {
+                        if (templateData[i][0] === 'Report Type') {
+                            if (templateData[i + 1] && templateData[i + 1][0] === 'Balances by Customer') {
+                                reportType = 'customer';
+                            } else if (templateData[i + 1] && templateData[i + 1][0] === 'Balances by Closing Period') {
+                                reportType = 'period';
+                            }
+                            break;
+                        }
+                    }
+                    
+                    // Build tooltip content and highlight ranges
+                    if (reportType === 'customer') {
+                        tooltipContent = '🟡 Customer ID<br/>🟢 Account Levels<br/>🔵 Closing Periods';
+                        
+                        // Highlight ranges with different colors
+                        for (let i = 0; i < templateData.length; i++) {
+                            if (templateData[i][0] === 'First Input (Customer ID)') {
+                                await highlightRange(templateData[i + 1][0], "#FFFF00"); // Yellow
+                            } else if (templateData[i][0] === 'Second Input (Account Levels)') {
+                                await highlightRange(templateData[i + 1][0], "#90EE90"); // Light Green
+                            } else if (templateData[i][0] === 'Third Input (Closing Periods)') {
+                                await highlightRange(templateData[i + 1][0], "#87CEEB"); // Light Blue
+                            }
+                        }
+                    } else if (reportType === 'period') {
+                        tooltipContent = '🟡 Closing Period<br/>🟢 Account Levels<br/>🔵 Customer IDs';
+                        
+                        // Highlight ranges with different colors
+                        for (let i = 0; i < templateData.length; i++) {
+                            if (templateData[i][0] === 'First Input (Closing Period)') {
+                                await highlightRange(templateData[i + 1][0], "#FFFF00"); // Yellow
+                            } else if (templateData[i][0] === 'Second Input (Account Levels)') {
+                                await highlightRange(templateData[i + 1][0], "#90EE90"); // Light Green
+                            } else if (templateData[i][0] === 'Third Input (Customer IDs)') {
+                                await highlightRange(templateData[i + 1][0], "#87CEEB"); // Light Blue
+                            }
+                        }
+                    }
+                    
+                    // Update tooltip content
+                    document.getElementById('tooltipContent').innerHTML = tooltipContent;
+                    
+                    // Position and show tooltip
+                    const button = document.getElementById('refreshReportBtn');
+                    const tooltip = document.getElementById('refreshTooltip');
+                    const rect = button.getBoundingClientRect();
+                    
+                    tooltip.style.left = (rect.right + 10) + 'px';
+                    tooltip.style.top = rect.top + 'px';
+                    tooltip.style.display = 'block';
+                    
+                });
+            } catch (error) {
+                console.error('Error showing refresh tooltip:', error);
+                // Show a simple tooltip if there's an error
+                document.getElementById('tooltipContent').innerHTML = 'Input fields from Ref Sheet';
+                const button = document.getElementById('refreshReportBtn');
+                const tooltip = document.getElementById('refreshTooltip');
+                const rect = button.getBoundingClientRect();
+                
+                tooltip.style.left = (rect.right + 10) + 'px';
+                tooltip.style.top = rect.top + 'px';
+                tooltip.style.display = 'block';
+            }
+        }
+
+        function hideRefreshTooltip() {
+            console.log('hideRefreshTooltip() called.');
+            document.getElementById('refreshTooltip').style.display = 'none';
+            
+            // Clear highlighting
+            clearAllHighlighting();
+        }
+
+        async function highlightRange(address, color) {
+            try {
+                await Excel.run(async (context) => {
+                    const { worksheetName, rangeAddress } = getWorksheetAndRange(address);
+                    const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                    const range = worksheet.getRange(rangeAddress);
+                    
+                    range.format.fill.color = color;
+                    range.format.font.bold = true;
+                    
+                    await context.sync();
+                    console.log(`Range ${address} highlighted with color ${color}`);
+                });
+            } catch (error) {
+                console.warn(`Could not highlight range ${address}:`, error);
+            }
+        }
+
+        async function clearAllHighlighting() {
+            try {
+                await Excel.run(async (context) => {
+                    // Get all worksheets
+                    const worksheets = context.workbook.worksheets;
+                    worksheets.load("items");
+                    await context.sync();
+                    
+                    // Clear highlighting from all worksheets
+                    for (let i = 0; i < worksheets.items.length; i++) {
+                        const worksheet = worksheets.items[i];
+                        try {
+                            const usedRange = worksheet.getUsedRange();
+                            usedRange.format.fill.clear();
+                            usedRange.format.font.bold = false;
+                        } catch (error) {
+                            // Skip worksheets with no used range
+                        }
+                    }
+                    
+                    await context.sync();
+                    console.log('All highlighting cleared');
+                });
+            } catch (error) {
+                console.warn('Could not clear highlighting:', error);
+            }
+        }
+
         async function generateReportFromTemplate() {
             console.log('generateReportFromTemplate() called.');
+            
+            // Highlight selected ranges in the workbook
+            const reportType = document.getElementById('reportType').value;
+            showMessage(`Refreshing ${reportType === 'customer' ? 'Customer' : 'Period'} Report...`);
+            
+            try {
+                await Excel.run(async (context) => {
+                    // Highlight all selected ranges
+                    const rangesToHighlight = [];
+                    
+                    if (reportType === 'customer') {
+                        if (selectedRanges.customerId?.address) {
+                            const { worksheetName, rangeAddress } = getWorksheetAndRange(selectedRanges.customerId.address);
+                            const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                            rangesToHighlight.push(worksheet.getRange(rangeAddress));
+                        }
+                        if (selectedRanges.accountLevels?.address) {
+                            const { worksheetName, rangeAddress } = getWorksheetAndRange(selectedRanges.accountLevels.address);
+                            const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                            rangesToHighlight.push(worksheet.getRange(rangeAddress));
+                        }
+                        if (selectedRanges.closingPeriods?.address) {
+                            const { worksheetName, rangeAddress } = getWorksheetAndRange(selectedRanges.closingPeriods.address);
+                            const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                            rangesToHighlight.push(worksheet.getRange(rangeAddress));
+                        }
+                    } else if (reportType === 'period') {
+                        if (selectedRanges.closingPeriod?.address) {
+                            const { worksheetName, rangeAddress } = getWorksheetAndRange(selectedRanges.closingPeriod.address);
+                            const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                            rangesToHighlight.push(worksheet.getRange(rangeAddress));
+                        }
+                        if (selectedRanges.accountLevels?.address) {
+                            const { worksheetName, rangeAddress } = getWorksheetAndRange(selectedRanges.accountLevels.address);
+                            const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                            rangesToHighlight.push(worksheet.getRange(rangeAddress));
+                        }
+                        if (selectedRanges.customerIds?.address) {
+                            const { worksheetName, rangeAddress } = getWorksheetAndRange(selectedRanges.customerIds.address);
+                            const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                            rangesToHighlight.push(worksheet.getRange(rangeAddress));
+                        }
+                    }
+                    
+                    // Apply highlighting to all ranges
+                    rangesToHighlight.forEach(range => {
+                        range.format.fill.color = "#FFFF00"; // Yellow highlight
+                        range.format.font.bold = true;
+                    });
+                    
+                    await context.sync();
+                    console.log('Ranges highlighted successfully');
+                    
+                    // Small delay to let user see the highlighted ranges
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    // Clear highlighting
+                    rangesToHighlight.forEach(range => {
+                        range.format.fill.clear();
+                        range.format.font.bold = false;
+                    });
+                    
+                    await context.sync();
+                    console.log('Highlighting cleared');
+                });
+            } catch (highlightError) {
+                console.warn('Could not highlight ranges:', highlightError);
+                // Continue with report generation even if highlighting fails
+            }
+            
             try {
                 await Excel.run(async (context) => {
                     const sheet = context.workbook.worksheets.getActiveWorksheet();
@@ -399,6 +620,9 @@
                     
                     await context.sync();
                     console.log('Report generated successfully from template');
+                    
+                    // Show success message for refresh completion
+                    showMessage('Report refreshed successfully!');
                     
                     // For refresh flow, don't show Save Template button or Reset options
                     console.log('Refresh completed - no additional options needed');
@@ -1126,12 +1350,17 @@
                     refSheet.activate();
                     
                     try {
-                        await context.sync();
-                        console.log('Template saved successfully to Ref Sheet');
-                        showMessage('Template saved successfully to "Ref Sheet"! The sheet has been activated.');
-                        
-                        // Disable Save Template button after successful save
-                        disableButton('saveTemplateButton');
+                                            await context.sync();
+                    console.log('Template saved successfully to Ref Sheet');
+                    showMessage('Template saved successfully to "Ref Sheet"! The sheet has been activated.');
+                    
+                    // Disable Save Template button after successful save
+                    disableButton('saveTemplateButton');
+                    
+                    // Show report options after successful template save
+                    setTimeout(() => {
+                        showReportOptions();
+                    }, 1000); // Small delay to let user see the success message
                     } catch (syncError) {
                         console.warn('Error during final sync, attempting to create new sheet:', syncError);
                         // If the update failed, try creating a new sheet
@@ -1196,9 +1425,14 @@
                                 
                                 newRefSheet.activate();
                                 
-                                await context.sync();
-                                showMessage('Template saved successfully to "Ref Sheet"!');
-                                disableButton('saveTemplateButton');
+                                                            await context.sync();
+                            showMessage('Template saved successfully to "Ref Sheet"!');
+                            disableButton('saveTemplateButton');
+                            
+                            // Show report options after successful template save
+                            setTimeout(() => {
+                                showReportOptions();
+                            }, 1000); // Small delay to let user see the success message
                             });
                         } catch (fallbackError) {
                             console.error('Fallback approach also failed:', fallbackError);
