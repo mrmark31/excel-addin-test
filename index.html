@@ -312,12 +312,27 @@
                 // Load the actual values from Excel ranges
                 try {
                     await Excel.run(async (context) => {
+                        // Helper function to get worksheet and range from address
+                        function getWorksheetAndRange(address) {
+                            const parts = address.split('!');
+                            if (parts.length === 2) {
+                                const worksheetName = parts[0];
+                                const rangeAddress = parts[1];
+                                return { worksheetName, rangeAddress };
+                            } else {
+                                // If no worksheet specified, use active worksheet
+                                return { worksheetName: null, rangeAddress: address };
+                            }
+                        }
+
                         // Parse the template data to populate selectedRanges
                         if (reportType === 'customer') {
                             // Find customer ID, account levels, and closing periods
                             for (let i = 0; i < templateData.length; i++) {
                                 if (templateData[i][0] === 'First Input (Customer ID)') {
-                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    const { worksheetName, rangeAddress } = getWorksheetAndRange(templateData[i + 1][0]);
+                                    const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                                    const range = worksheet.getRange(rangeAddress);
                                     range.load(["address", "values"]);
                                     await context.sync();
                                     selectedRanges.customerId = { 
@@ -325,7 +340,9 @@
                                         value: range.values[0][0] 
                                     };
                                 } else if (templateData[i][0] === 'Second Input (Account Levels)') {
-                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    const { worksheetName, rangeAddress } = getWorksheetAndRange(templateData[i + 1][0]);
+                                    const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                                    const range = worksheet.getRange(rangeAddress);
                                     range.load(["address", "values"]);
                                     await context.sync();
                                     selectedRanges.accountLevels = { 
@@ -333,7 +350,9 @@
                                         values: range.values.flat() 
                                     };
                                 } else if (templateData[i][0] === 'Third Input (Closing Periods)') {
-                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    const { worksheetName, rangeAddress } = getWorksheetAndRange(templateData[i + 1][0]);
+                                    const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                                    const range = worksheet.getRange(rangeAddress);
                                     range.load(["address", "values"]);
                                     await context.sync();
                                     selectedRanges.closingPeriods = { 
@@ -346,7 +365,9 @@
                             // Find closing period, account levels, and customer IDs
                             for (let i = 0; i < templateData.length; i++) {
                                 if (templateData[i][0] === 'First Input (Closing Period)') {
-                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    const { worksheetName, rangeAddress } = getWorksheetAndRange(templateData[i + 1][0]);
+                                    const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                                    const range = worksheet.getRange(rangeAddress);
                                     range.load(["address", "values"]);
                                     await context.sync();
                                     selectedRanges.closingPeriod = { 
@@ -354,7 +375,9 @@
                                         value: range.values[0][0] 
                                     };
                                 } else if (templateData[i][0] === 'Second Input (Account Levels)') {
-                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    const { worksheetName, rangeAddress } = getWorksheetAndRange(templateData[i + 1][0]);
+                                    const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                                    const range = worksheet.getRange(rangeAddress);
                                     range.load(["address", "values"]);
                                     await context.sync();
                                     selectedRanges.accountLevels = { 
@@ -362,7 +385,9 @@
                                         values: range.values.flat() 
                                     };
                                 } else if (templateData[i][0] === 'Third Input (Customer IDs)') {
-                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    const { worksheetName, rangeAddress } = getWorksheetAndRange(templateData[i + 1][0]);
+                                    const worksheet = worksheetName ? context.workbook.worksheets.getItem(worksheetName) : context.workbook.worksheets.getActiveWorksheet();
+                                    const range = worksheet.getRange(rangeAddress);
                                     range.load(["address", "values"]);
                                     await context.sync();
                                     selectedRanges.customerIds = { 
