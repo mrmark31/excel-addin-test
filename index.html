@@ -96,11 +96,29 @@
         <!-- Main Form -->
         <div id="mainForm" class="addin-hidden">
             <h2>Excel Report Generator</h2>
-            <select id="reportType" onchange="handleReportTypeChange()">
-                <option value="">Select Report Type</option>
-                <option value="customer">Balances by Customer</option>
-                <option value="period">Balances by Closing Period</option>
-            </select>
+            
+            <!-- Report Options (shown if Ref Sheet exists) -->
+            <div id="reportOptions" class="addin-hidden">
+                <h3>Choose an option:</h3>
+                <div style="margin: 20px 0;">
+                    <button id="refreshReportBtn" onclick="refreshReport()" style="width: 200px; margin: 10px; background: #28a745;">
+                        🔄 Refresh the Report
+                    </button>
+                    <br/>
+                    <button id="generateNewReportBtn" onclick="generateNewReport()" style="width: 200px; margin: 10px; background: #0078d4;">
+                        ➕ Generate New Report
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Report Type Selection (shown if Ref Sheet doesn't exist or for new reports) -->
+            <div id="reportTypeSelection" class="addin-hidden">
+                <select id="reportType" onchange="handleReportTypeChange()">
+                    <option value="">Select Report Type</option>
+                    <option value="customer">Balances by Customer</option>
+                    <option value="period">Balances by Closing Period</option>
+                </select>
+            </div>
 
             <!-- Customer Balance Form -->
             <div id="customerBalanceForm" class="addin-hidden">
@@ -177,14 +195,16 @@
 
         let currentWorkflow = '';
 
-        function login() {
+        async function login() {
             console.log('login() called.');
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             if (username && password) {
                 document.getElementById('loginForm').classList.add('addin-hidden');
                 document.getElementById('mainForm').classList.remove('addin-hidden');
-                handleReportTypeChange();
+                
+                // Check if Ref Sheet exists
+                await checkRefSheetExists();
             }
         }
 
@@ -192,6 +212,180 @@
             console.log('resetForm() called.');
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
+        }
+
+        async function checkRefSheetExists() {
+            console.log('Checking if Ref Sheet exists...');
+            try {
+                await Excel.run(async (context) => {
+                    try {
+                        const refSheet = context.workbook.worksheets.getItem("Ref Sheet");
+                        refSheet.load("name");
+                        await context.sync();
+                        console.log('Ref Sheet exists, showing report options');
+                        showReportOptions();
+                    } catch (error) {
+                        console.log('Ref Sheet does not exist, showing report type selection');
+                        showReportTypeSelection();
+                    }
+                });
+            } catch (error) {
+                console.error('Error checking Ref Sheet:', error);
+                // Default to showing report type selection if there's an error
+                showReportTypeSelection();
+            }
+        }
+
+        function showReportOptions() {
+            console.log('Showing report options');
+            document.getElementById('reportOptions').classList.remove('addin-hidden');
+            document.getElementById('reportTypeSelection').classList.add('addin-hidden');
+            // Hide any existing forms
+            document.getElementById('customerBalanceForm').classList.add('addin-hidden');
+            document.getElementById('periodBalanceForm').classList.add('addin-hidden');
+            document.getElementById('submitButton').classList.add('addin-hidden');
+            document.getElementById('saveTemplateButton').classList.add('addin-hidden');
+        }
+
+        function showReportTypeSelection() {
+            console.log('Showing report type selection');
+            document.getElementById('reportOptions').classList.add('addin-hidden');
+            document.getElementById('reportTypeSelection').classList.remove('addin-hidden');
+            handleReportTypeChange();
+        }
+
+        async function refreshReport() {
+            console.log('refreshReport() called.');
+            try {
+                await Excel.run(async (context) => {
+                    const refSheet = context.workbook.worksheets.getItem("Ref Sheet");
+                    refSheet.load("usedRange");
+                    await context.sync();
+                    
+                    // Read the template data from Ref Sheet
+                    const usedRange = refSheet.getUsedRange();
+                    usedRange.load("values");
+                    await context.sync();
+                    
+                    const templateData = usedRange.values;
+                    console.log('Template data loaded:', templateData);
+                    
+                    // Parse the template data and populate selections
+                    await populateSelectionsFromTemplate(templateData);
+                    
+                    // Show the appropriate form based on report type
+                    showReportTypeSelection();
+                    
+                    showMessage('Template loaded successfully! You can now modify selections and regenerate the report.');
+                });
+            } catch (error) {
+                console.error('Error refreshing report:', error);
+                showMessage('Error loading template. Please generate a new report.', true);
+                showReportTypeSelection();
+            }
+        }
+
+        function generateNewReport() {
+            console.log('generateNewReport() called.');
+            showReportTypeSelection();
+        }
+
+        async function populateSelectionsFromTemplate(templateData) {
+            console.log('Populating selections from template data');
+            
+            // Find report type
+            let reportType = '';
+            for (let i = 0; i < templateData.length; i++) {
+                if (templateData[i][0] === 'Report Type') {
+                    if (templateData[i + 1] && templateData[i + 1][0] === 'Balances by Customer') {
+                        reportType = 'customer';
+                    } else if (templateData[i + 1] && templateData[i + 1][0] === 'Balances by Closing Period') {
+                        reportType = 'period';
+                    }
+                    break;
+                }
+            }
+            
+            if (reportType) {
+                document.getElementById('reportType').value = reportType;
+                
+                // Parse the template data to populate selectedRanges
+                if (reportType === 'customer') {
+                    // Find customer ID, account levels, and closing periods
+                    for (let i = 0; i < templateData.length; i++) {
+                        if (templateData[i][0] === 'First Input (Customer ID)') {
+                            selectedRanges.customerId = { address: templateData[i + 1][0] };
+                        } else if (templateData[i][0] === 'Second Input (Account Levels)') {
+                            selectedRanges.accountLevels = { address: templateData[i + 1][0] };
+                        } else if (templateData[i][0] === 'Third Input (Closing Periods)') {
+                            selectedRanges.closingPeriods = { address: templateData[i + 1][0] };
+                        }
+                    }
+                } else if (reportType === 'period') {
+                    // Find closing period, account levels, and customer IDs
+                    for (let i = 0; i < templateData.length; i++) {
+                        if (templateData[i][0] === 'First Input (Closing Period)') {
+                            selectedRanges.closingPeriod = { address: templateData[i + 1][0] };
+                        } else if (templateData[i][0] === 'Second Input (Account Levels)') {
+                            selectedRanges.accountLevels = { address: templateData[i + 1][0] };
+                        } else if (templateData[i][0] === 'Third Input (Customer IDs)') {
+                            selectedRanges.customerIds = { address: templateData[i + 1][0] };
+                        }
+                    }
+                }
+                
+                // Mark that selections are loaded from template
+                selectedRanges.fromTemplate = true;
+                console.log('Selections populated from template:', selectedRanges);
+            }
+        }
+
+        function displayLoadedSelections(reportType) {
+            console.log('Displaying loaded selections for:', reportType);
+            
+            if (reportType === 'customer') {
+                // Show all steps
+                document.getElementById('customerStep2').classList.remove('addin-hidden');
+                document.getElementById('customerStep3').classList.remove('addin-hidden');
+                
+                // Disable buttons and show selections
+                if (selectedRanges.customerId) {
+                    disableButton('btnSelectCustomerId');
+                    document.getElementById('selectedCustomerIdDisplay_customer').textContent = 'Selected: ' + selectedRanges.customerId.address;
+                }
+                if (selectedRanges.accountLevels) {
+                    disableButton('btnSelectAccountLevels_customer');
+                    document.getElementById('selectedAccountLevelsDisplay_customer').textContent = 'Selected: ' + selectedRanges.accountLevels.address;
+                }
+                if (selectedRanges.closingPeriods) {
+                    disableButton('btnSelectClosingPeriods_customer');
+                    document.getElementById('selectedClosingPeriodsDisplay_customer').textContent = 'Selected: ' + selectedRanges.closingPeriods.address;
+                }
+            } else if (reportType === 'period') {
+                // Show all steps
+                document.getElementById('periodStep2').classList.remove('addin-hidden');
+                document.getElementById('periodStep3').classList.remove('addin-hidden');
+                
+                // Disable buttons and show selections
+                if (selectedRanges.closingPeriod) {
+                    disableButton('btnSelectClosingPeriod_period');
+                    document.getElementById('selectedClosingPeriodDisplay_period').textContent = 'Selected: ' + selectedRanges.closingPeriod.address;
+                }
+                if (selectedRanges.accountLevels) {
+                    disableButton('btnSelectAccountLevels_period');
+                    document.getElementById('selectedAccountLevelsDisplay_period').textContent = 'Selected: ' + selectedRanges.accountLevels.address;
+                }
+                if (selectedRanges.customerIds) {
+                    disableButton('btnSelectCustomerIds_period');
+                    document.getElementById('selectedCustomerIdsDisplay_period').textContent = 'Selected: ' + selectedRanges.customerIds.address;
+                }
+            }
+            
+            // Reset the fromTemplate flag
+            selectedRanges.fromTemplate = false;
+            
+            // Check if submit should be enabled
+            checkSubmitEnabled();
         }
 
         function handleReportTypeChange() {
@@ -235,12 +429,14 @@
             document.getElementById('selectedCustomerIdsDisplay_period').textContent = '';
             document.getElementById('selectedClosingPeriodDisplay_period').textContent = '';
 
-            // Clear saved data
-            selectedRanges.customerId = null;
-            selectedRanges.accountLevels = null;
-            selectedRanges.closingPeriods = null;
-            selectedRanges.customerIds = null;
-            selectedRanges.closingPeriod = null;
+            // Clear saved data (only if not loading from template)
+            if (!selectedRanges.fromTemplate) {
+                selectedRanges.customerId = null;
+                selectedRanges.accountLevels = null;
+                selectedRanges.closingPeriods = null;
+                selectedRanges.customerIds = null;
+                selectedRanges.closingPeriod = null;
+            }
             
             checkSubmitEnabled();
 
@@ -249,10 +445,20 @@
                 currentWorkflow = 'customer';
                 customerForm.classList.remove('addin-hidden');
                 document.getElementById('customerStep1').classList.remove('addin-hidden');
+                
+                // If loading from template, show all steps and populate displays
+                if (selectedRanges.fromTemplate) {
+                    displayLoadedSelections('customer');
+                }
             } else if (reportType === 'period') {
                 currentWorkflow = 'period';
                 periodForm.classList.remove('addin-hidden');
                 document.getElementById('periodStep1').classList.remove('addin-hidden');
+                
+                // If loading from template, show all steps and populate displays
+                if (selectedRanges.fromTemplate) {
+                    displayLoadedSelections('period');
+                }
             } else {
                 currentWorkflow = '';
             }
@@ -263,7 +469,8 @@
             accountLevels: null,
             closingPeriods: null,
             closingPeriod: null,
-            customerIds: null
+            customerIds: null,
+            fromTemplate: false
         };
 
         // Helper function to disable a button with visual feedback
