@@ -589,9 +589,21 @@
                 await Excel.run(async (context) => {
                     // Create or get the "Ref Sheet" and save reference details
                     let refSheet;
+                    let isNewSheet = false;
+                    
                     try {
                         refSheet = context.workbook.worksheets.getItem("Ref Sheet");
                         console.log('Ref Sheet already exists');
+                        
+                        // Make sure the sheet is visible
+                        refSheet.load("visible");
+                        await context.sync();
+                        
+                        if (!refSheet.visible) {
+                            console.log('Ref Sheet exists but is hidden, making it visible');
+                            refSheet.visible = true;
+                        }
+                        
                         // Clear existing content in Ref Sheet if it exists
                         try {
                             const usedRange = refSheet.getUsedRange();
@@ -606,6 +618,7 @@
                         // If sheet doesn't exist, create it
                         console.log('Creating new Ref Sheet');
                         refSheet = context.workbook.worksheets.add("Ref Sheet");
+                        isNewSheet = true;
                     }
                     
                     const reportType = document.getElementById('reportType').value;
@@ -645,16 +658,64 @@
                     refSheet.getRange("A9").values = [["Template Saved On"]];
                     refSheet.getRange("A10").values = [[new Date().toLocaleString()]];
                     
+                    // Activate the Ref Sheet so user can see it
+                    refSheet.activate();
+                    
                     await context.sync();
                     console.log('Template saved successfully to Ref Sheet');
-                    showMessage('Template saved successfully to "Ref Sheet"!');
+                    showMessage('Template saved successfully to "Ref Sheet"! The sheet has been activated.');
                     
                     // Disable Save Template button after successful save
                     disableButton('saveTemplateButton');
                 });
             } catch (error) {
                 console.error('Error saving template:', error);
-                showMessage('Error saving template: ' + error.message, true);
+                
+                // Check if it's the "resource doesn't exist" error
+                if (error.message && error.message.includes("doesn't exist")) {
+                    console.log('Attempting to create new Ref Sheet due to resource error...');
+                    try {
+                        await Excel.run(async (context) => {
+                            // Force create a new Ref Sheet
+                            const newRefSheet = context.workbook.worksheets.add("Ref Sheet");
+                            newRefSheet.activate();
+                            
+                            const reportType = document.getElementById('reportType').value;
+                            
+                            // Save reference details
+                            newRefSheet.getRange("A1").values = [["Report Type"]];
+                            newRefSheet.getRange("A2").values = [[reportType === 'customer' ? 'Balances by Customer' : 'Balances by Closing Period']];
+                            
+                            if (reportType === 'customer') {
+                                newRefSheet.getRange("A3").values = [["First Input (Customer ID)"]];
+                                newRefSheet.getRange("A4").values = [[selectedRanges.customerId.address]];
+                                newRefSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
+                                newRefSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
+                                newRefSheet.getRange("A7").values = [["Third Input (Closing Periods)"]];
+                                newRefSheet.getRange("A8").values = [[selectedRanges.closingPeriods.address]];
+                            } else if (reportType === 'period') {
+                                newRefSheet.getRange("A3").values = [["First Input (Closing Period)"]];
+                                newRefSheet.getRange("A4").values = [[selectedRanges.closingPeriod.address]];
+                                newRefSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
+                                newRefSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
+                                newRefSheet.getRange("A7").values = [["Third Input (Customer IDs)"]];
+                                newRefSheet.getRange("A8").values = [[selectedRanges.customerIds.address]];
+                            }
+                            
+                            newRefSheet.getRange("A9").values = [["Template Saved On"]];
+                            newRefSheet.getRange("A10").values = [[new Date().toLocaleString()]];
+                            
+                            await context.sync();
+                            showMessage('Template saved successfully to new "Ref Sheet"!');
+                            disableButton('saveTemplateButton');
+                        });
+                    } catch (retryError) {
+                        console.error('Error in retry attempt:', retryError);
+                        showMessage('Error saving template: ' + retryError.message, true);
+                    }
+                } else {
+                    showMessage('Error saving template: ' + error.message, true);
+                }
             }
         }
     </script>
