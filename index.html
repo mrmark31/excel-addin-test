@@ -658,6 +658,31 @@
                     refSheet.getRange("A9").values = [["Template Saved On"]];
                     refSheet.getRange("A10").values = [[new Date().toLocaleString()]];
                     
+                    // Protect the Ref Sheet to prevent editing
+                    console.log('Protecting Ref Sheet from editing...');
+                    refSheet.protection.protect({
+                        allowFormatCells: false,
+                        allowFormatColumns: false,
+                        allowFormatRows: false,
+                        allowInsertColumns: false,
+                        allowInsertRows: false,
+                        allowInsertHyperlinks: false,
+                        allowDeleteColumns: false,
+                        allowDeleteRows: false,
+                        allowSort: false,
+                        allowAutoFilter: false,
+                        allowPivotTables: false,
+                        allowEditObjects: false,
+                        allowScenarios: false,
+                        allowSelectUnlockedCells: true,
+                        allowSelectLockedCells: true
+                    });
+                    
+                    // Protect the sheet name from being changed
+                    refSheet.protection.protect({
+                        allowRename: false
+                    });
+                    
                     // Activate the Ref Sheet so user can see it
                     refSheet.activate();
                     
@@ -704,6 +729,31 @@
                             
                             newRefSheet.getRange("A9").values = [["Template Saved On"]];
                             newRefSheet.getRange("A10").values = [[new Date().toLocaleString()]];
+                            
+                            // Protect the new Ref Sheet to prevent editing
+                            console.log('Protecting new Ref Sheet from editing...');
+                            newRefSheet.protection.protect({
+                                allowFormatCells: false,
+                                allowFormatColumns: false,
+                                allowFormatRows: false,
+                                allowInsertColumns: false,
+                                allowInsertRows: false,
+                                allowInsertHyperlinks: false,
+                                allowDeleteColumns: false,
+                                allowDeleteRows: false,
+                                allowSort: false,
+                                allowAutoFilter: false,
+                                allowPivotTables: false,
+                                allowEditObjects: false,
+                                allowScenarios: false,
+                                allowSelectUnlockedCells: true,
+                                allowSelectLockedCells: true
+                            });
+                            
+                            // Protect the sheet name from being changed
+                            newRefSheet.protection.protect({
+                                allowRename: false
+                            });
                             
                             await context.sync();
                             showMessage('Template saved successfully to new "Ref Sheet"!');
