@@ -622,10 +622,16 @@
                             refSheet.protection.load("protected");
                             await context.sync();
                             if (refSheet.protection.protected) {
-                                console.log('Ref Sheet is protected, temporarily unprotecting for updates');
-                                refSheet.protection.unprotect();
-                                wasProtected = true;
-                                await context.sync();
+                                console.log('Ref Sheet is protected, attempting to unprotect for updates');
+                                try {
+                                    refSheet.protection.unprotect();
+                                    wasProtected = true;
+                                    await context.sync();
+                                    console.log('Successfully unprotected Ref Sheet');
+                                } catch (unprotectError) {
+                                    console.warn('Could not unprotect sheet, will try to update anyway:', unprotectError);
+                                    // Continue without unprotecting - the update might still work
+                                }
                             }
                         } catch (protectError) {
                             console.log('Could not check protection status, proceeding with update');
@@ -636,10 +642,11 @@
                             const usedRange = refSheet.getUsedRange();
                             if (usedRange) {
                                 usedRange.clear();
+                                console.log('Successfully cleared existing content');
                             }
                         } catch (clearError) {
-                            // If no used range exists, that's fine for a new sheet
-                            console.log('No existing content to clear in Ref Sheet');
+                            console.warn('Could not clear existing content, will overwrite:', clearError);
+                            // Continue - we'll try to overwrite the content anyway
                         }
                         
                         // Store protection status for later
@@ -721,12 +728,86 @@
                     // Activate the Ref Sheet so user can see it
                     refSheet.activate();
                     
-                    await context.sync();
-                    console.log('Template saved successfully to Ref Sheet');
-                    showMessage('Template saved successfully to "Ref Sheet"! The sheet has been activated.');
-                    
-                    // Disable Save Template button after successful save
-                    disableButton('saveTemplateButton');
+                    try {
+                        await context.sync();
+                        console.log('Template saved successfully to Ref Sheet');
+                        showMessage('Template saved successfully to "Ref Sheet"! The sheet has been activated.');
+                        
+                        // Disable Save Template button after successful save
+                        disableButton('saveTemplateButton');
+                    } catch (syncError) {
+                        console.warn('Error during final sync, attempting to create new sheet:', syncError);
+                        // If the update failed, try creating a new sheet
+                        try {
+                            await Excel.run(async (context) => {
+                                // Delete the problematic sheet and create a new one
+                                try {
+                                    const oldSheet = context.workbook.worksheets.getItem("Ref Sheet");
+                                    oldSheet.delete();
+                                    await context.sync();
+                                    console.log('Successfully deleted old Ref Sheet');
+                                } catch (deleteError) {
+                                    console.log('Could not delete old sheet, will try to overwrite');
+                                }
+                                
+                                // Create new sheet with the standard name
+                                const newRefSheet = context.workbook.worksheets.add("Ref Sheet");
+                                
+                                const reportType = document.getElementById('reportType').value;
+                                
+                                // Write data to new sheet
+                                newRefSheet.getRange("A1").values = [["Report Type"]];
+                                newRefSheet.getRange("A2").values = [[reportType === 'customer' ? 'Balances by Customer' : 'Balances by Closing Period']];
+                                
+                                if (reportType === 'customer') {
+                                    newRefSheet.getRange("A3").values = [["First Input (Customer ID)"]];
+                                    newRefSheet.getRange("A4").values = [[selectedRanges.customerId.address]];
+                                    newRefSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
+                                    newRefSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
+                                    newRefSheet.getRange("A7").values = [["Third Input (Closing Periods)"]];
+                                    newRefSheet.getRange("A8").values = [[selectedRanges.closingPeriods.address]];
+                                } else if (reportType === 'period') {
+                                    newRefSheet.getRange("A3").values = [["First Input (Closing Period)"]];
+                                    newRefSheet.getRange("A4").values = [[selectedRanges.closingPeriod.address]];
+                                    newRefSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
+                                    newRefSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
+                                    newRefSheet.getRange("A7").values = [["Third Input (Customer IDs)"]];
+                                    newRefSheet.getRange("A8").values = [[selectedRanges.customerIds.address]];
+                                }
+                                
+                                newRefSheet.getRange("A9").values = [["Template Saved On"]];
+                                newRefSheet.getRange("A10").values = [[new Date().toLocaleString()]];
+                                
+                                // Protect the new sheet
+                                newRefSheet.protection.protect({
+                                    allowFormatCells: false,
+                                    allowFormatColumns: false,
+                                    allowFormatRows: false,
+                                    allowInsertColumns: false,
+                                    allowInsertRows: false,
+                                    allowInsertHyperlinks: false,
+                                    allowDeleteColumns: false,
+                                    allowDeleteRows: false,
+                                    allowSort: false,
+                                    allowAutoFilter: false,
+                                    allowPivotTables: false,
+                                    allowEditObjects: false,
+                                    allowScenarios: false,
+                                    allowSelectUnlockedCells: true,
+                                    allowSelectLockedCells: true
+                                });
+                                
+                                newRefSheet.activate();
+                                
+                                await context.sync();
+                                showMessage('Template saved successfully to "Ref Sheet"!');
+                                disableButton('saveTemplateButton');
+                            });
+                        } catch (fallbackError) {
+                            console.error('Fallback approach also failed:', fallbackError);
+                            showMessage('Error saving template: Could not update or create new sheet', true);
+                        }
+                    }
                 });
             } catch (error) {
                 console.error('Error saving template:', error);
@@ -805,4 +886,4 @@
         }
     </script>
 </body>
-</html>
+</html> 
