@@ -218,8 +218,14 @@
             // Re-enable submit button
             enableButton('submitButton');
             
-            // Hide Save Template button
-            document.getElementById('saveTemplateButton').classList.add('addin-hidden');
+            // Hide Save Template button and reset its styles
+            const saveTemplateButton = document.getElementById('saveTemplateButton');
+            if (saveTemplateButton) {
+                saveTemplateButton.classList.add('addin-hidden');
+                saveTemplateButton.style.display = 'none';
+                saveTemplateButton.style.backgroundColor = '';
+                saveTemplateButton.disabled = false;
+            }
 
             // Clear display texts
             document.getElementById('selectedCustomerIdDisplay_customer').textContent = '';
@@ -576,8 +582,14 @@
             // Re-enable submit button
             enableButton('submitButton');
             
-            // Hide Save Template button
-            document.getElementById('saveTemplateButton').classList.add('addin-hidden');
+            // Hide Save Template button and reset its styles
+            const saveTemplateButton = document.getElementById('saveTemplateButton');
+            if (saveTemplateButton) {
+                saveTemplateButton.classList.add('addin-hidden');
+                saveTemplateButton.style.display = 'none';
+                saveTemplateButton.style.backgroundColor = '';
+                saveTemplateButton.disabled = false;
+            }
             
             // Reset workflow to initial state for selected report type
             handleReportTypeChange();
@@ -604,6 +616,21 @@
                             refSheet.visible = true;
                         }
                         
+                        // Check if sheet is protected and unprotect it temporarily for updates
+                        let wasProtected = false;
+                        try {
+                            refSheet.protection.load("protected");
+                            await context.sync();
+                            if (refSheet.protection.protected) {
+                                console.log('Ref Sheet is protected, temporarily unprotecting for updates');
+                                refSheet.protection.unprotect();
+                                wasProtected = true;
+                                await context.sync();
+                            }
+                        } catch (protectError) {
+                            console.log('Could not check protection status, proceeding with update');
+                        }
+                        
                         // Clear existing content in Ref Sheet if it exists
                         try {
                             const usedRange = refSheet.getUsedRange();
@@ -614,11 +641,15 @@
                             // If no used range exists, that's fine for a new sheet
                             console.log('No existing content to clear in Ref Sheet');
                         }
+                        
+                        // Store protection status for later
+                        refSheet.wasProtected = wasProtected;
                     } catch (error) {
                         // If sheet doesn't exist, create it
                         console.log('Creating new Ref Sheet');
                         refSheet = context.workbook.worksheets.add("Ref Sheet");
                         isNewSheet = true;
+                        refSheet.wasProtected = false;
                     }
                     
                     const reportType = document.getElementById('reportType').value;
@@ -658,30 +689,34 @@
                     refSheet.getRange("A9").values = [["Template Saved On"]];
                     refSheet.getRange("A10").values = [[new Date().toLocaleString()]];
                     
-                    // Protect the Ref Sheet to prevent editing
-                    console.log('Protecting Ref Sheet from editing...');
-                    refSheet.protection.protect({
-                        allowFormatCells: false,
-                        allowFormatColumns: false,
-                        allowFormatRows: false,
-                        allowInsertColumns: false,
-                        allowInsertRows: false,
-                        allowInsertHyperlinks: false,
-                        allowDeleteColumns: false,
-                        allowDeleteRows: false,
-                        allowSort: false,
-                        allowAutoFilter: false,
-                        allowPivotTables: false,
-                        allowEditObjects: false,
-                        allowScenarios: false,
-                        allowSelectUnlockedCells: true,
-                        allowSelectLockedCells: true
-                    });
-                    
-                    // Protect the sheet name from being changed
-                    refSheet.protection.protect({
-                        allowRename: false
-                    });
+                    // Protect the Ref Sheet to prevent editing (only if it wasn't previously protected or if it's a new sheet)
+                    if (isNewSheet || refSheet.wasProtected) {
+                        console.log('Protecting Ref Sheet from editing...');
+                        refSheet.protection.protect({
+                            allowFormatCells: false,
+                            allowFormatColumns: false,
+                            allowFormatRows: false,
+                            allowInsertColumns: false,
+                            allowInsertRows: false,
+                            allowInsertHyperlinks: false,
+                            allowDeleteColumns: false,
+                            allowDeleteRows: false,
+                            allowSort: false,
+                            allowAutoFilter: false,
+                            allowPivotTables: false,
+                            allowEditObjects: false,
+                            allowScenarios: false,
+                            allowSelectUnlockedCells: true,
+                            allowSelectLockedCells: true
+                        });
+                        
+                        // Protect the sheet name from being changed
+                        refSheet.protection.protect({
+                            allowRename: false
+                        });
+                    } else {
+                        console.log('Ref Sheet was not previously protected, keeping it unprotected for user access');
+                    }
                     
                     // Activate the Ref Sheet so user can see it
                     refSheet.activate();
@@ -730,7 +765,7 @@
                             newRefSheet.getRange("A9").values = [["Template Saved On"]];
                             newRefSheet.getRange("A10").values = [[new Date().toLocaleString()]];
                             
-                            // Protect the new Ref Sheet to prevent editing
+                            // Protect the new Ref Sheet to prevent editing (always protect new sheets)
                             console.log('Protecting new Ref Sheet from editing...');
                             newRefSheet.protection.protect({
                                 allowFormatCells: false,
@@ -770,4 +805,4 @@
         }
     </script>
 </body>
-</html> 
+</html>
