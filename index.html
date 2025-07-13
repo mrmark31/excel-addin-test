@@ -141,6 +141,8 @@
             </div>
 
             <button id="submitButton" class="addin-hidden" onclick="submitForm()">Submit</button>
+            <!-- Save Template Button (only visible after report generation) -->
+            <button id="saveTemplateButton" class="addin-hidden" onclick="saveTemplate()">Save Template</button>
             <!-- Reset Selections Button (only visible after login) -->
             <div style="margin-top:20px; text-align:center;">
                 <button id="resetSelectionsButton" onclick="resetSelections()">Reset Selections</button>
@@ -215,6 +217,9 @@
             
             // Re-enable submit button
             enableButton('submitButton');
+            
+            // Hide Save Template button
+            document.getElementById('saveTemplateButton').classList.add('addin-hidden');
 
             // Clear display texts
             document.getElementById('selectedCustomerIdDisplay_customer').textContent = '';
@@ -445,6 +450,9 @@
                     if (reportType === 'customer') {
                         // Use Account Levels and Closing Periods
                         console.log('Getting ranges for customer report:', selectedRanges.accountLevels.address, selectedRanges.closingPeriods.address);
+                        if (!selectedRanges.accountLevels || !selectedRanges.closingPeriods) {
+                            throw new Error('Missing required ranges for customer report');
+                        }
                         range1Obj = sheet.getRange(selectedRanges.accountLevels.address);
                         range2Obj = sheet.getRange(selectedRanges.closingPeriods.address);
                         values1 = selectedRanges.accountLevels.values;
@@ -452,6 +460,9 @@
                     } else if (reportType === 'period') {
                         // Use Account Levels and Customer IDs
                         console.log('Getting ranges for period report:', selectedRanges.accountLevels.address, selectedRanges.customerIds.address);
+                        if (!selectedRanges.accountLevels || !selectedRanges.customerIds) {
+                            throw new Error('Missing required ranges for period report');
+                        }
                         range1Obj = sheet.getRange(selectedRanges.accountLevels.address);
                         range2Obj = sheet.getRange(selectedRanges.customerIds.address);
                         values1 = selectedRanges.accountLevels.values;
@@ -460,9 +471,13 @@
                         alert('Please select a report type.');
                         return;
                     }
+                    console.log('Loading range properties...');
                     range1Obj.load(["rowIndex", "columnIndex", "rowCount", "columnCount"]);
                     range2Obj.load(["rowIndex", "columnIndex", "rowCount", "columnCount"]);
                     await context.sync();
+                    console.log('Range properties loaded successfully');
+                    console.log('Range1:', range1Obj.rowIndex, range1Obj.columnIndex, range1Obj.rowCount, range1Obj.columnCount);
+                    console.log('Range2:', range2Obj.rowIndex, range2Obj.columnIndex, range2Obj.rowCount, range2Obj.columnCount);
                     // Determine which is horizontal (columns) and which is vertical (rows)
                     let colRange, rowRange, colValues, rowValues;
                     if (range1Obj.rowCount === 1 && range1Obj.columnCount > 1) {
@@ -490,14 +505,25 @@
                         return;
                     }
                     // Write balances in the intersection grid
-                    for (let r = 0; r < rowValues.length; r++) {
-                        for (let c = 0; c < colValues.length; c++) {
-                            const row = rowRange.rowIndex + r;
-                            const col = colRange.columnIndex + c;
-                            const cell = sheet.getCell(row, col);
-                            const balance = Math.floor(Math.random() * 10000);
-                            cell.values = [[balance]];
+                    try {
+                        console.log('Writing balances to intersection grid...');
+                        console.log('Row values length:', rowValues.length, 'Col values length:', colValues.length);
+                        console.log('Row range:', rowRange.rowIndex, 'Col range:', colRange.columnIndex);
+                        
+                        for (let r = 0; r < rowValues.length; r++) {
+                            for (let c = 0; c < colValues.length; c++) {
+                                const row = rowRange.rowIndex + r;
+                                const col = colRange.columnIndex + c;
+                                console.log('Writing to cell:', row, col);
+                                const cell = sheet.getCell(row, col);
+                                const balance = Math.floor(Math.random() * 10000);
+                                cell.values = [[balance]];
+                            }
                         }
+                        console.log('Balances written successfully');
+                    } catch (writeError) {
+                        console.error('Error writing balances:', writeError);
+                        throw new Error('Failed to write report data: ' + writeError.message);
                     }
                     
                     // Create or get the "Ref Sheet" and save reference details
@@ -568,6 +594,9 @@
                     
                     // Disable submit button after successful submission
                     disableButton('submitButton');
+                    
+                    // Show Save Template button after successful report generation
+                    document.getElementById('saveTemplateButton').classList.remove('addin-hidden');
                 });
             } catch (error) {
                 console.error(error);
@@ -589,8 +618,86 @@
             // Re-enable submit button
             enableButton('submitButton');
             
+            // Hide Save Template button
+            document.getElementById('saveTemplateButton').classList.add('addin-hidden');
+            
             // Reset workflow to initial state for selected report type
             handleReportTypeChange();
+        }
+
+        async function saveTemplate() {
+            console.log('saveTemplate() called.');
+            try {
+                await Excel.run(async (context) => {
+                    // Create or get the "Ref Sheet" and save reference details
+                    let refSheet;
+                    try {
+                        refSheet = context.workbook.worksheets.getItem("Ref Sheet");
+                        console.log('Ref Sheet already exists');
+                        // Clear existing content in Ref Sheet if it exists
+                        try {
+                            const usedRange = refSheet.getUsedRange();
+                            if (usedRange) {
+                                usedRange.clear();
+                            }
+                        } catch (clearError) {
+                            // If no used range exists, that's fine for a new sheet
+                            console.log('No existing content to clear in Ref Sheet');
+                        }
+                    } catch (error) {
+                        // If sheet doesn't exist, create it
+                        console.log('Creating new Ref Sheet');
+                        refSheet = context.workbook.worksheets.add("Ref Sheet");
+                    }
+                    
+                    const reportType = document.getElementById('reportType').value;
+                    
+                    // Save reference details
+                    console.log('Writing reference details to Ref Sheet');
+                    refSheet.getRange("A1").values = [["Report Type"]];
+                    refSheet.getRange("A2").values = [[reportType === 'customer' ? 'Balances by Customer' : 'Balances by Closing Period']];
+                    
+                    if (reportType === 'customer') {
+                        console.log('Customer report - saving customer ID:', selectedRanges.customerId.address);
+                        refSheet.getRange("A3").values = [["First Input (Customer ID)"]];
+                        refSheet.getRange("A4").values = [[selectedRanges.customerId.address]];
+                        
+                        console.log('Customer report - saving account levels:', selectedRanges.accountLevels.address);
+                        refSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
+                        refSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
+                        
+                        console.log('Customer report - saving closing periods:', selectedRanges.closingPeriods.address);
+                        refSheet.getRange("A7").values = [["Third Input (Closing Periods)"]];
+                        refSheet.getRange("A8").values = [[selectedRanges.closingPeriods.address]];
+                    } else if (reportType === 'period') {
+                        console.log('Period report - saving closing period:', selectedRanges.closingPeriod.address);
+                        refSheet.getRange("A3").values = [["First Input (Closing Period)"]];
+                        refSheet.getRange("A4").values = [[selectedRanges.closingPeriod.address]];
+                        
+                        console.log('Period report - saving account levels:', selectedRanges.accountLevels.address);
+                        refSheet.getRange("A5").values = [["Second Input (Account Levels)"]];
+                        refSheet.getRange("A6").values = [[selectedRanges.accountLevels.address]];
+                        
+                        console.log('Period report - saving customer IDs:', selectedRanges.customerIds.address);
+                        refSheet.getRange("A7").values = [["Third Input (Customer IDs)"]];
+                        refSheet.getRange("A8").values = [[selectedRanges.customerIds.address]];
+                    }
+                    
+                    // Add timestamp
+                    refSheet.getRange("A9").values = [["Template Saved On"]];
+                    refSheet.getRange("A10").values = [[new Date().toLocaleString()]];
+                    
+                    await context.sync();
+                    console.log('Template saved successfully to Ref Sheet');
+                    showMessage('Template saved successfully to "Ref Sheet"!');
+                    
+                    // Disable Save Template button after successful save
+                    disableButton('saveTemplateButton');
+                });
+            } catch (error) {
+                console.error('Error saving template:', error);
+                showMessage('Error saving template: ' + error.message, true);
+            }
         }
     </script>
 </body>
