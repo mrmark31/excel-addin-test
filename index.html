@@ -245,6 +245,8 @@
             document.getElementById('periodBalanceForm').classList.add('addin-hidden');
             document.getElementById('submitButton').classList.add('addin-hidden');
             document.getElementById('saveTemplateButton').classList.add('addin-hidden');
+            // Hide reset selections button during refresh/new report options
+            document.getElementById('resetSelectionsButton').classList.add('addin-hidden');
         }
 
         function showReportTypeSelection() {
@@ -398,22 +400,8 @@
                     await context.sync();
                     console.log('Report generated successfully from template');
                     
-                    // Show Save Template button after successful report generation
-                    console.log('Report generation completed, showing Save Template button...');
-                    setTimeout(() => {
-                        const saveTemplateButton = document.getElementById('saveTemplateButton');
-                        if (saveTemplateButton) {
-                            console.log('Save Template button found, removing addin-hidden class');
-                            saveTemplateButton.classList.remove('addin-hidden');
-                            saveTemplateButton.style.display = 'inline-block';
-                            saveTemplateButton.style.backgroundColor = '#28a745'; // Green color to make it stand out
-                            console.log('Save Template button should now be visible');
-                            console.log('Button display style:', saveTemplateButton.style.display);
-                            console.log('Button classes:', saveTemplateButton.className);
-                        } else {
-                            console.error('Save Template button not found in DOM');
-                        }
-                    }, 200); // Slightly longer delay to ensure everything is complete
+                    // For refresh flow, don't show Save Template button or Reset options
+                    console.log('Refresh completed - no additional options needed');
                 });
             } catch (error) {
                 console.error('Error generating report from template:', error);
