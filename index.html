@@ -309,34 +309,79 @@
             if (reportType) {
                 document.getElementById('reportType').value = reportType;
                 
-                // Parse the template data to populate selectedRanges
-                if (reportType === 'customer') {
-                    // Find customer ID, account levels, and closing periods
-                    for (let i = 0; i < templateData.length; i++) {
-                        if (templateData[i][0] === 'First Input (Customer ID)') {
-                            selectedRanges.customerId = { address: templateData[i + 1][0] };
-                        } else if (templateData[i][0] === 'Second Input (Account Levels)') {
-                            selectedRanges.accountLevels = { address: templateData[i + 1][0] };
-                        } else if (templateData[i][0] === 'Third Input (Closing Periods)') {
-                            selectedRanges.closingPeriods = { address: templateData[i + 1][0] };
+                // Load the actual values from Excel ranges
+                try {
+                    await Excel.run(async (context) => {
+                        // Parse the template data to populate selectedRanges
+                        if (reportType === 'customer') {
+                            // Find customer ID, account levels, and closing periods
+                            for (let i = 0; i < templateData.length; i++) {
+                                if (templateData[i][0] === 'First Input (Customer ID)') {
+                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    range.load(["address", "values"]);
+                                    await context.sync();
+                                    selectedRanges.customerId = { 
+                                        address: range.address, 
+                                        value: range.values[0][0] 
+                                    };
+                                } else if (templateData[i][0] === 'Second Input (Account Levels)') {
+                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    range.load(["address", "values"]);
+                                    await context.sync();
+                                    selectedRanges.accountLevels = { 
+                                        address: range.address, 
+                                        values: range.values.flat() 
+                                    };
+                                } else if (templateData[i][0] === 'Third Input (Closing Periods)') {
+                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    range.load(["address", "values"]);
+                                    await context.sync();
+                                    selectedRanges.closingPeriods = { 
+                                        address: range.address, 
+                                        values: range.values.flat() 
+                                    };
+                                }
+                            }
+                        } else if (reportType === 'period') {
+                            // Find closing period, account levels, and customer IDs
+                            for (let i = 0; i < templateData.length; i++) {
+                                if (templateData[i][0] === 'First Input (Closing Period)') {
+                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    range.load(["address", "values"]);
+                                    await context.sync();
+                                    selectedRanges.closingPeriod = { 
+                                        address: range.address, 
+                                        value: range.values[0][0] 
+                                    };
+                                } else if (templateData[i][0] === 'Second Input (Account Levels)') {
+                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    range.load(["address", "values"]);
+                                    await context.sync();
+                                    selectedRanges.accountLevels = { 
+                                        address: range.address, 
+                                        values: range.values.flat() 
+                                    };
+                                } else if (templateData[i][0] === 'Third Input (Customer IDs)') {
+                                    const range = context.workbook.getRange(templateData[i + 1][0]);
+                                    range.load(["address", "values"]);
+                                    await context.sync();
+                                    selectedRanges.customerIds = { 
+                                        address: range.address, 
+                                        values: range.values.flat() 
+                                    };
+                                }
+                            }
                         }
-                    }
-                } else if (reportType === 'period') {
-                    // Find closing period, account levels, and customer IDs
-                    for (let i = 0; i < templateData.length; i++) {
-                        if (templateData[i][0] === 'First Input (Closing Period)') {
-                            selectedRanges.closingPeriod = { address: templateData[i + 1][0] };
-                        } else if (templateData[i][0] === 'Second Input (Account Levels)') {
-                            selectedRanges.accountLevels = { address: templateData[i + 1][0] };
-                        } else if (templateData[i][0] === 'Third Input (Customer IDs)') {
-                            selectedRanges.customerIds = { address: templateData[i + 1][0] };
-                        }
-                    }
+                        
+                        // Mark that selections are loaded from template
+                        selectedRanges.fromTemplate = true;
+                        console.log('Selections populated from template with values:', selectedRanges);
+                    });
+                } catch (error) {
+                    console.error('Error loading values from ranges:', error);
+                    showMessage('Error loading template values. Please generate a new report.', true);
+                    showReportTypeSelection();
                 }
-                
-                // Mark that selections are loaded from template
-                selectedRanges.fromTemplate = true;
-                console.log('Selections populated from template:', selectedRanges);
             }
         }
 
